@@ -7,4 +7,7 @@ c. 2019
 
 ## Notes
 
-W.I.P.
+Using PostgreSQL persistence layer via [docker container](https://hub.docker.com/_/postgres)
+with mounted directory for data for portability.
+
+
