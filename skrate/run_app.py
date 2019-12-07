@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Skrate main application for serving skateboarding data interface."""
-from flask import Flask, render_template
+from typing import Optional
+
+import click
+from flask import Flask, session, render_template
+from flask_session import Session
 
 
 app = Flask(__name__) 
+sess = Session(app)
 
 
 @app.route('/<user>')
@@ -32,5 +37,18 @@ def hello_name(trick: str) -> str:
     return "Nice"
 
 
+@click.command()
+@click.option("--debug/--no-debug", default="False", help="Whether to enable debug mode")
+@click.option("-h", "--host", help="Use 0.0.0.0 for LAN, else localhost only")
+def run_app(debug: bool, host: Optional[str]) -> None:
+    """Run the main server application."""
+
+    app.secret_key = 'super secret key'
+    app.config['SESSION_TYPE'] = 'filesystem'
+    app.debug = debug
+    sess.init_app(app)
+    app.run(host=host)
+
+
 if __name__ == '__main__': 
-    app.run()
+    run_app()
