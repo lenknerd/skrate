@@ -26,9 +26,9 @@ def index(user: str) -> str:
     return render_template("index.html", user=user)
 
 
-@app.route('/landed/<trick>')
-def hello_name(trick: str) -> str:
-    """Mark that you just landed a trick called <trick>.
+@app.route('/attempt/<trick>/<landed>')
+def attempt(trick: str, landed: bool) -> str:
+    """Mark that you just landed or missed a trick called <trick>.
     
     Args:
         trick: the name of the trick
@@ -37,6 +37,14 @@ def hello_name(trick: str) -> str:
     # TODO log it in database
     return "Nice"
 
+# TODO
+# get refreshed game block (instructions, latest game results, record overall, etc.)
+# get refreshed trick block (updated stats)
+# mark an attempt at a trick (pass or fail)
+#   all from db state except whether latest game is in same session
+
+# Args for stuff like look-back time
+# https://docs.google.com/document/d/1Mt8Z6fhCYwp_sQ_VUhOaYh5ghqx23Lqh3TdgOI6Elaw
 
 @click.command()
 @click.option("--debug/--no-debug", default="False", help="Whether to enable debug mode")
