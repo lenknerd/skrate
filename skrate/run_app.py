@@ -3,6 +3,7 @@
 from typing import Optional
 
 import click
+import psycopg2
 from flask import Flask, session, render_template
 from flask_session import Session
 
