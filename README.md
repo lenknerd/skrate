@@ -77,6 +77,9 @@ duplicated in nollie/switch/fakie form. Most things should be but not everything
 we should have "Kickflip" as well as "Nollie Kickflip", "Switch Kickflip", and "Fakie Kickflip"
 but we don't want to have both "Ollie" and "Nollie Ollie".
 
+After adding to `tricks.py`, you can simply rerun `./skrate.py database-setup` in order to write
+the changes. It will respect existing data and only add the new tricks.
+
 ### Migrating Data
 
 The PostgreSQL docker container is run using a mounted docker volume called skrate-vol for postgres
