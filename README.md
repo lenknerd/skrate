@@ -76,3 +76,16 @@ Trick definitions are in `tricks.py`. Each base trick is also labeled with wheth
 duplicated in nollie/switch/fakie form. Most things should be but not everything. For instance,
 we should have "Kickflip" as well as "Nollie Kickflip", "Switch Kickflip", and "Fakie Kickflip"
 but we don't want to have both "Ollie" and "Nollie Ollie".
+
+### Migrating Data
+
+The PostgreSQL docker container is run using a mounted docker volume called skrate-vol for postgres
+data. Thus, the database is persisted between docker runs in a host directory, and can be easily
+copied or migrated.
+
+You can view the actual disk location of this data by running
+
+	docker inspect skrate-vol
+
+and noting the `Mountpoint` entry. You can then explore this directory (root permissions needed
+since docker owns this location).

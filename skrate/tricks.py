@@ -51,7 +51,7 @@ def trick_variants(trick_tuple: Tuple[str, bool, bool, bool]) -> List[str]:
 
     """
     base = trick_tuple[0]
-    prefixes = [prefix for prefix, use in zip(_PREFIXES, trick_tuple[1:])]
+    prefixes = [prefix for prefix, use in zip(_PREFIXES, trick_tuple[1:]) if use]
     return [base, *[prefix + base for prefix in prefixes]]
 
 
