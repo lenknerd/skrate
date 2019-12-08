@@ -3,13 +3,25 @@
 from typing import Optional
 
 import click
-import psycopg2
 from flask import Flask, session, render_template
 from flask_session import Session
 
+import models
+import tricks
 
+
+# Flask application and session
 app = Flask(__name__) 
 sess = Session(app)
+
+
+# App constants
+_APP_KEY = "skrate default key"
+_SQLALCHEMY_DATABASE_URI = "postgresql://skrate_user:skrate_password@localhost:5432/postgres"
+_SESSION_TYPE = "filesystem"
+
+
+# Route definitions for the Skrate REST API
 
 
 @app.route('/<user>')
@@ -34,8 +46,7 @@ def attempt(trick: str, landed: bool) -> str:
         trick: the name of the trick
 
     """
-    # TODO log it in database
-    return "Nice"
+    pass
 
 # TODO
 # get refreshed game block (instructions, latest game results, record overall, etc.)
@@ -46,18 +57,42 @@ def attempt(trick: str, landed: bool) -> str:
 # Args for stuff like look-back time
 # https://docs.google.com/document/d/1Mt8Z6fhCYwp_sQ_VUhOaYh5ghqx23Lqh3TdgOI6Elaw
 
-@click.command()
+@click.group()
 @click.option("--debug/--no-debug", default="False", help="Whether to enable debug mode")
-@click.option("-h", "--host", help="Use 0.0.0.0 for LAN, else localhost only")
-def run_app(debug: bool, host: Optional[str]) -> None:
-    """Run the main server application."""
+def skrate(debug: bool) -> None:
+    """Main entry point for skrate command line interface."""
 
-    app.secret_key = 'super secret key'
-    app.config['SESSION_TYPE'] = 'filesystem'
+    print("Welcome to Skrate!")
+
+    app.secret_key = _APP_KEY
+    app.config["SESSION_TYPE"] = _SESSION_TYPE
+    app.config["SQLALCHEMY_DATABASE_URI"] = _SQLALCHEMY_DATABASE_URI
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # silence warning
     app.debug = debug
     sess.init_app(app)
-    app.run(host=host)
+    models.init_db_connec(app)
+
+
+@skrate.command()
+def database_setup() -> None:
+    """Create tables in skrate schema based on app models."""
+
+    print("Setting up database tables...")
+    models.create_db_tables(app)
+    print("Loading up tricks...")
+    tricks.update_tricks_table(app)
+    print("Setup complete.")
+
+
+@skrate.command()
+@click.option("-p", "--port", help="Port to listen on", default=5000, type=int)
+@click.option("-h", "--host", help="Use 0.0.0.0 for LAN, else localhost only")
+def serve(port: int, host: Optional[str]) -> None:
+    """Run the main server application."""
+
+    print("Running skrate web server.")
+    app.run(port=port, host=host)
 
 
 if __name__ == '__main__': 
-    run_app()
+    skrate()

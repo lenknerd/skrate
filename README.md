@@ -1,13 +1,78 @@
 # Skrate
 
-Use data mining to masure your skateboarding progression, and play SKATE against yourself.
+Use data mining to measure your skateboarding progression, and play
+[SKATE](https://en.wikipedia.org/wiki/Game_of_Skate) against your past self.
 
 David Lenkner
 c. 2019
 
-## Notes
+### Shout-Outs
 
-Using PostgreSQL persistence layer via [docker container](https://hub.docker.com/_/postgres)
-with mounted directory for data for portability.
+Skrate uses a PostgreSQL persistence layer via [docker container](https://hub.docker.com/_/postgres)
+with a mounted directory for data for portability.
 
+Skrate uses [Flask](https://www.palletsprojects.com/p/flask/) Python web service, and
+[Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/2.x/) for model management.
 
+## Instructions
+
+### Running the Server
+
+Install [docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/), and build and run the
+postgres database server by running `./run.sh` in the `persistence` folder.
+
+If you are running it for the first time, also create necessary tables by running
+
+	./skrate.py database-setup
+
+This not only creates the model tables but also populates the `trick` table with some common
+skateboarding tricks. New ones may be added, see [Adding New Tricks](### Adding New Tricks) below.
+
+Optional - if you are inclined to look via SQL behind the "alchemy" part of SQLAlchemy, you can connect
+and check out tables created, using [psql](http://www.postgresqltutorial.com/install-postgresql/), via
+
+	psql -h localhost -d postgres --username=postgres
+
+with password `postgres_password`. On-host security is not a thing here yet. You can run this at any
+time later to manually explore data.
+
+To actually start the service, run
+
+	./skrate.py serve
+
+This will start the server on your local network. It is not a background task, so may want to use
+for example [screen](https://linuxize.com/post/how-to-use-linux-screen/) and detach after run.
+
+For more help you can run
+
+	./skrate.py serve --help
+
+### Skating
+
+Pick any username, and browse to `http://<your-ip>:5000/<anyusername>` to log in (security is not a
+thing in Skrate yet).
+
+You don't have to start a game of SKATE - any time you miss or land trick, click "Miss" or "Land" by
+the appropriate trick in the list to record the attempt and update your stats.
+
+If you want to play SKATE against your past self, click "Start Game" near top of page. From there
+simply follow instructions and read the display below. It may tell you any of the following
+
+* "Your lead" - your turn to try any trick you want and your opponent has to land
+* "Your follow-up, try a (whatever)" - your opponent led and landed some trick, you have to try it
+
+When you land or miss a trick, enter Land or Miss in the corresponding trick in the trick list.
+
+Status updates on your opponents tricks also will be shown including
+
+* "Opponent Matched your (whatever)" - you led, landed, opponent landed same trick, back to your lead
+* "Opponent Landed a (whatever)"
+* "Opponent Missed a (whatever)"
+ 
+### Adding New Tricks
+
+Trick definitions are in `tricks.py`. Each base trick is also labeled with whether it should be
+duplicated in nollie/switch/fakie form. Most things should be but not everything. For instance,
+we should have "Kickflip" as well as "Nollie Kickflip", "Switch Kickflip", and "Fakie Kickflip"
+but we don't want to have both "Ollie" and "Nollie Ollie".
+a "Nollie" should not be 
