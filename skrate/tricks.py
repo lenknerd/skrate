@@ -67,7 +67,7 @@ def update_tricks_table(app: Flask) -> None:
             for trick_name in trick_variants(trick_tuple):
                 # Store tricks if they're not already there
                 if not models.Trick.query.filter_by(name=trick_name).count():
-                    print("Adding trick: %s" % trick_name)
+                    app.logger.info("Adding trick: %s" % trick_name)
                     new_trick = models.Trick(name=trick_name)
                     models.db.session.add(new_trick)
                     models.db.session.commit()  # auto-assigns ID on commit

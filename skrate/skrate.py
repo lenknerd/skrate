@@ -99,7 +99,7 @@ def start_game() -> str:
 def skrate(debug: bool) -> None:
     """Main entry point for skrate command line interface."""
 
-    print("Welcome to Skrate!")
+    app.logger.info("Welcome to Skrate!")
 
     app.secret_key = _APP_KEY
     app.config["SESSION_TYPE"] = _SESSION_TYPE
@@ -117,11 +117,11 @@ def skrate(debug: bool) -> None:
 def database_setup() -> None:
     """Create tables in skrate schema based on app models."""
 
-    print("Setting up database tables...")
+    app.logger.info("Setting up database tables...")
     models.create_db_tables(app)
-    print("Loading up tricks...")
+    app.logger.info("Loading up tricks...")
     tricks.update_tricks_table(app)
-    print("Setup complete.")
+    app.logger.info("Setup complete.")
 
 
 @skrate.command()
@@ -130,7 +130,7 @@ def database_setup() -> None:
 def serve(port: int, host: Optional[str]) -> None:
     """Run the main server application."""
 
-    print("Running skrate web server.")
+    app.logger.info("Running skrate web server.")
     app.run(port=port, host=host)
 
 
