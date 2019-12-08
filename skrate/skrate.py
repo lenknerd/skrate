@@ -26,15 +26,11 @@ _SERVER_LOG_FORMAT = "'%(asctime)s %(levelname)s: %(message)s'"
 
 def configure_app_logger() -> None:
     """Configure app logger to file and output."""
-    lev = logging.WARNING
-    if app.debug:
-        lev = logging.DEBUG
+    app.logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(_SERVER_LOG)
-    strm_handler = logging.StreamHandler()
-    for handler in (file_handler, strm_handler):
-        handler.setLevel(lev)
-        handler.setFormatter(logging.Formatter(_SERVER_LOG_FORMAT))
-        app.logger.addHandler(handler)
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(_SERVER_LOG_FORMAT))
+    app.logger.addHandler(file_handler)
 
 
 # Route definitions for the Skrate REST API
@@ -73,7 +69,7 @@ def attempt(trick_id: str, landed: str, past: str) -> str:
     app.logger.info("User %s tried trick %s (landed=%s)", user, trick_id, landed)
     models.record_attempt(app, user, trick_id_int, landed_bool, game_id_if_any)
     # return """ { "ran": "true" } """
-    return {"ran": True}
+    return {"attempted": True}
     # TODO if end of game, set game_id end values (complete/winner)
     # and set session game_id back to none
 
@@ -83,7 +79,8 @@ def start_game() -> str:
     """Start a game under the current user."""
     game_id = models.start_game(app, session["user"])
     session["game_id"] = game_id
-    return """ { "hello": 5 } """
+    app.logger.info("Use %s started game, id %s", session["user"], game_id)
+    return {"started": True}
 
 
 # TODO
