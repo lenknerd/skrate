@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Skrate main application for serving skateboarding data interface."""
+import logging
 from typing import Optional
 
 import click
@@ -19,6 +20,21 @@ sess = Session(app)
 _APP_KEY = "skrate default key"
 _SQLALCHEMY_DATABASE_URI = "postgresql://skrate_user:skrate_password@localhost:5432/postgres"
 _SESSION_TYPE = "filesystem"
+_SERVER_LOG = "/tmp/skrate_service.log"
+_SERVER_LOG_FORMAT = "'%(asctime)s %(levelname)s: %(message)s'"
+
+
+def configure_app_logger() -> None:
+    """Configure app logger to file and output."""
+    lev = logging.WARNING
+    if app.debug:
+        lev = logging.DEBUG
+    file_handler = logging.FileHandler(_SERVER_LOG)
+    strm_handler = logging.StreamHandler()
+    for handler in (file_handler, strm_handler):
+        handler.setLevel(lev)
+        handler.setFormatter(logging.Formatter(_SERVER_LOG_FORMAT))
+        app.logger.addHandler(handler)
 
 
 # Route definitions for the Skrate REST API
@@ -35,21 +51,29 @@ def index(user: str) -> str:
 
     """
     session["user"] = user
+    app.logger.info("User %s started a session.", user)
     return render_template("index.html", user=user)
 
 
 @app.route("/attempt/<trick_id>/<landed>/<past>")
-def attempt(trick_id: int, landed: bool, past: bool) -> str:
+def attempt(trick_id: str, landed: str, past: str) -> str:
     """Mark that you just landed or missed a trick called <trick>.
     
     Args:
-        trick_id: the id of the trick
-        landed: whether or not you landed it
-        past: whether it is a "fake" attempt by your past self in a game
+        trick_id: the id of the trick (should be integer format)
+        landed: whether or not you landed it ('true'/'false')
+        past: whether is a "fake" attempt by past self in game ('true'/'false')
 
     """
-    user = "past_" + session["user"] if past else session["user"]
-    models.record_attempt(user, trick_id, landed)
+    landed_bool = landed == "true"  # would be nice if Flask checked type hints?
+    trick_id_int = int(trick_id)
+    user = "past_" + session["user"] if past == "true" else session["user"]
+    game_id_if_any = session.get("game_id")
+
+    app.logger.info("User %s tried trick %s (landed=%s)", user, trick_id, landed)
+    models.record_attempt(app, user, trick_id_int, landed_bool, game_id_if_any)
+    # return """ { "ran": "true" } """
+    return {"ran": True}
     # TODO if end of game, set game_id end values (complete/winner)
     # and set session game_id back to none
 
@@ -57,8 +81,9 @@ def attempt(trick_id: int, landed: bool, past: bool) -> str:
 @app.route("/start_game")
 def start_game() -> str:
     """Start a game under the current user."""
-    game_id = models.start_game(session["user"])
+    game_id = models.start_game(app, session["user"])
     session["game_id"] = game_id
+    return """ { "hello": 5 } """
 
 
 # TODO
@@ -79,8 +104,11 @@ def skrate(debug: bool) -> None:
     app.secret_key = _APP_KEY
     app.config["SESSION_TYPE"] = _SESSION_TYPE
     app.config["SQLALCHEMY_DATABASE_URI"] = _SQLALCHEMY_DATABASE_URI
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # silence warning
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # just quiets an unnec. warning
     app.debug = debug
+
+    configure_app_logger()
+
     sess.init_app(app)
     models.init_db_connec(app)
 

@@ -45,9 +45,14 @@ This will start the server on your local network. It is not a background task, s
 for example [screen](https://linuxize.com/post/how-to-use-linux-screen/) and detach after run. To only
 start service between docker and your local machine, leave off the 0.0.0.0.
 
-For more help you can run
+Verbose output may be seen by adding the `--debug` argument after `skrate.py` for any command. Log 
+messages go to stdout and `/tmp/skrate_service.log`. For more help you can run
 
-	./skrate.py serve --help
+	./skrate.py --help
+
+for a list of general command, and for help on a specific command,
+
+	./skrate.py [COMMAND] --help
 
 ### Skating
 
