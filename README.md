@@ -37,12 +37,13 @@ the docker container. If so run
 
 You can also run this at any time later to manually explore data.
 
-To actually start the service, run
+To actually start the service on your LAN, run
 
-	./skrate.py serve
+	./skrate.py serve -h 0.0.0.0
 
 This will start the server on your local network. It is not a background task, so may want to use
-for example [screen](https://linuxize.com/post/how-to-use-linux-screen/) and detach after run.
+for example [screen](https://linuxize.com/post/how-to-use-linux-screen/) and detach after run. To only
+start service between docker and your local machine, leave off the 0.0.0.0.
 
 For more help you can run
 
