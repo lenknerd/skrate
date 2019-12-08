@@ -19,7 +19,8 @@ Skrate uses [Flask](https://www.palletsprojects.com/p/flask/) Python web service
 ### Running the Server
 
 Install [docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/), and build and run the
-postgres database server by running `./run.sh` in the `persistence` folder.
+postgres database server by running `./run.sh` in the `persistence` folder. Install python modules
+in `requirements.txt` (preferably in venv).
 
 If you are running it for the first time, also create necessary tables by running
 
@@ -29,12 +30,12 @@ This not only creates the model tables but also populates the `trick` table with
 skateboarding tricks. New ones may be added, see [Adding New Tricks](### Adding New Tricks) below.
 
 Optional - if you are inclined to look via SQL behind the "alchemy" part of SQLAlchemy, you can connect
-and check out tables created, using [psql](http://www.postgresqltutorial.com/install-postgresql/), via
+and check out tables created, using [psql](http://www.postgresqltutorial.com/install-postgresql/) inside
+the docker container. If so run
 
-	psql -h localhost -d postgres --username=postgres
+	docker exec -it skrate_persistance psql postgresql://postgres:postgres_password@localhost:5432/postgres
 
-with password `postgres_password`. On-host security is not a thing here yet. You can run this at any
-time later to manually explore data.
+You can also run this at any time later to manually explore data.
 
 To actually start the service, run
 
@@ -66,8 +67,8 @@ When you land or miss a trick, enter Land or Miss in the corresponding trick in 
 Status updates on your opponents tricks also will be shown including
 
 * "Opponent Matched your (whatever)" - you led, landed, opponent landed same trick, back to your lead
-* "Opponent Landed a (whatever)"
-* "Opponent Missed a (whatever)"
+* "Opponent Challenged by Landing a (whatever)" - opponent landed a trick when they had lead
+* "Opponent Missed a (whatever)" - opponent missed a trick either with or without lead
  
 ### Adding New Tricks
 
@@ -75,4 +76,3 @@ Trick definitions are in `tricks.py`. Each base trick is also labeled with wheth
 duplicated in nollie/switch/fakie form. Most things should be but not everything. For instance,
 we should have "Kickflip" as well as "Nollie Kickflip", "Switch Kickflip", and "Fakie Kickflip"
 but we don't want to have both "Ollie" and "Nollie Ollie".
-a "Nollie" should not be 

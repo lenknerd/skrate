@@ -24,7 +24,7 @@ _SESSION_TYPE = "filesystem"
 # Route definitions for the Skrate REST API
 
 
-@app.route('/<user>')
+@app.route("/<user>")
 def index(user: str) -> str:
     """Entry point to Skrate should be URL with user in name.
 
@@ -34,28 +34,40 @@ def index(user: str) -> str:
     Note, actual user authentication needed if this goes anywhere.
 
     """
-    session['user'] = user
+    session["user"] = user
     return render_template("index.html", user=user)
 
 
-@app.route('/attempt/<trick>/<landed>')
-def attempt(trick: str, landed: bool) -> str:
+@app.route("/attempt/<trick_id>/<landed>/<past>")
+def attempt(trick_id: int, landed: bool, past: bool) -> str:
     """Mark that you just landed or missed a trick called <trick>.
     
     Args:
-        trick: the name of the trick
+        trick_id: the id of the trick
+        landed: whether or not you landed it
+        past: whether it is a "fake" attempt by your past self in a game
 
     """
-    pass
+    user = "past_" + session["user"] if past else session["user"]
+    models.record_attempt(user, trick_id, landed)
+    # TODO if end of game, set game_id end values (complete/winner)
+    # and set session game_id back to none
+
+
+@app.route("/start_game")
+def start_game() -> str:
+    """Start a game under the current user."""
+    game_id = models.start_game(session["user"])
+    session["game_id"] = game_id
+
 
 # TODO
 # get refreshed game block (instructions, latest game results, record overall, etc.)
 # get refreshed trick block (updated stats)
-# mark an attempt at a trick (pass or fail)
-#   all from db state except whether latest game is in same session
 
-# Args for stuff like look-back time
-# https://docs.google.com/document/d/1Mt8Z6fhCYwp_sQ_VUhOaYh5ghqx23Lqh3TdgOI6Elaw
+
+# Skrate CLI tool defintion
+
 
 @click.group()
 @click.option("--debug/--no-debug", default="False", help="Whether to enable debug mode")
