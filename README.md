@@ -33,7 +33,7 @@ Optional - if you are inclined to look via SQL behind the "alchemy" part of SQLA
 and check out tables created, using [psql](http://www.postgresqltutorial.com/install-postgresql/) inside
 the docker container. If so run
 
-	docker exec -it skrate_persistance psql postgresql://postgres:postgres_password@localhost:5432/postgres
+	docker exec -it skrate-persistence psql postgresql://postgres:postgres_password@localhost:5432/postgres
 
 You can also run this at any time later to manually explore data.
 
