@@ -18,6 +18,7 @@ _SQLALCHEMY_DATABASE_URI = "postgresql://skrate_user:skrate_password@localhost:5
 _SESSION_TYPE = "filesystem"
 _SERVER_LOG = "/tmp/skrate_service.log"
 _SERVER_LOG_FORMAT = "'%(asctime)s %(levelname)s: %(message)s'"
+_TESTING = False
 
 
 def configure_app_logger() -> None:
@@ -40,6 +41,7 @@ def init_app(debug: bool) -> None:
     app.config["SESSION_TYPE"] = _SESSION_TYPE
     app.config["SQLALCHEMY_DATABASE_URI"] = _SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # just quiets an unnec. warning
+    app.config["TESTING"] = _TESTING
     app.debug = debug
 
     configure_app_logger()
@@ -65,7 +67,8 @@ def index(user: str) -> str:
     Args:
         user: the user name to log in as.
 
-    Note, actual user authentication needed if this goes anywhere.
+    Note, actual user authentication needed in the future, or at least
+    check if the user argument above is not empty.
 
     """
     session["user"] = user
