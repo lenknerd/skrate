@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-import models
+from skrate import models
 
 
 # Trick name and whether should also include a switch, nollie, and/or fakie version.

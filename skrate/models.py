@@ -30,6 +30,22 @@ def create_db_tables(app: Flask) -> None:
         db.create_all()
 
 
+def drop_db_tables(app: Flask) -> None:
+    """Drop all tables, useful in test (ensure URI contains TEST).
+
+    Args:
+        app: The Flask web server application object
+
+    Raises:
+        ValueError: if you try to run this on production config
+
+    """
+    if not "test" in app.config["SQLALCHEMY_DATABASE_URI"]:
+        raise ValueError("drop_all() only permitted on test db, use psql.")
+    with app.app_context():
+        db.drop_all()
+
+
 class Trick(db.Model):
     """A type of trick (i.e., kickflip) - **NOT** a specific attempt of one."""
 

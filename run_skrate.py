@@ -7,8 +7,9 @@ import click
 from flask import Flask, session, render_template
 from flask_session import Session
 
-import models
-import tricks
+# from skrate import server
+from skrate import models
+from skrate import tricks
 
 
 # Flask application and session
@@ -93,7 +94,7 @@ def start_game() -> str:
 
 @click.group()
 @click.option("--debug/--no-debug", default="False", help="Whether to enable debug mode")
-def skrate(debug: bool) -> None:
+def run_skrate(debug: bool) -> None:
     """Main entry point for skrate command line interface."""
 
     app.logger.info("Welcome to Skrate!")
@@ -110,7 +111,7 @@ def skrate(debug: bool) -> None:
     models.init_db_connec(app)
 
 
-@skrate.command()
+@run_skrate.command()
 def database_setup() -> None:
     """Create tables in skrate schema based on app models."""
 
@@ -121,7 +122,7 @@ def database_setup() -> None:
     app.logger.info("Setup complete.")
 
 
-@skrate.command()
+@run_skrate.command()
 @click.option("-p", "--port", help="Port to listen on", default=5000, type=int)
 @click.option("-h", "--host", help="Use 0.0.0.0 for LAN, else localhost only")
 def serve(port: int, host: Optional[str]) -> None:
@@ -132,4 +133,4 @@ def serve(port: int, host: Optional[str]) -> None:
 
 
 if __name__ == '__main__': 
-    skrate()
+    run_skrate()
