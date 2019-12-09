@@ -4,7 +4,7 @@ import os
 import pytest
 
 import context
-import run_skrate
+from skrate import server
 from skrate import models
 
 
@@ -16,15 +16,15 @@ _TEST_DB_URI = "postgresql://skrate_test_user:skrate_test_password@localhost:543
 def client():
     """Client test fixture for flask app testing - fake client, test database."""
 
-    run_skrate.app.config["SQLALCHEMY_DATABASE_URI"] = _TEST_DB_URI
-    run_skrate.app.config["TESTING"] = True
-    run_skrate.app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # just quiets an unnec. warning
+    server.app.config["SQLALCHEMY_DATABASE_URI"] = _TEST_DB_URI
+    server.app.config["TESTING"] = True
+    server.app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # just quiets an unnec. warning
 
-    with run_skrate.app.test_client() as client:
+    with server.app.test_client() as client:
         # Connect to the test database, drop and re-create tables for clean state
-        models.init_db_connec(run_skrate.app)
-        models.drop_db_tables(run_skrate.app)
-        models.create_db_tables(run_skrate.app)
+        models.init_db_connec(server.app)
+        models.drop_db_tables(server.app)
+        models.create_db_tables(server.app)
 
         yield client
 
