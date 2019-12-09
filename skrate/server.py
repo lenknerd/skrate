@@ -149,6 +149,18 @@ def start_game() -> SkrateActionResponse:
     return SkrateActionResponse("start_game", [_GAME_EL_ID]).obj()
 
 
+@app.route("/get_single_trick_view/<trick_id>")
+def get_single_trick_view(trick_id: str) -> None:
+    """Get rendered template showing the trick name, and my stats on doing it.
+    
+    Args:
+        The id of the trick you want to update/render block for.
+
+    """
+    trick = models.Trick.query.filter(id=trick_id).one()
+    params = get_trick_view_params(trick)
+    return render_template("trick.html", **params)
+
 # TODO
 # get refreshed latest-game template (score so far, end result if ended, instruc, etc.)
 # get refreshed all-tricks template (updated stats)

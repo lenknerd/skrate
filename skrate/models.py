@@ -109,17 +109,29 @@ def start_game(app: Flask, user: str) -> int:
         app.logger.info("Started new game with id %s" % game.id)
 
 
+def get_trick_view_params(user: str, trick: Trick) -> Mapping[str, Any]:
+    """Get parameters to render landing page view of trick and stats on it.
+
+    Args:
+        user: the currente Skrate user
+        trick: the Trick object representing the type of trick
+
+    """
+
+    user_attempts = Attempt.query.filter_by(user=user, id=trick.id).count()
+    user_lands = Attempt.query.filter_by(user=user, id=trick.id, landed=True).count()
+    return {
+        "attempts": user_attempts,
+        "lands": user_lands,
+        "name": trick.name,
+        "id": trick.id,
+    }
+
+
 def get_all_trick_infos(app: Flask, user: str) -> List[Mapping[str, Any]]:
     """Get list of all trick infos and user stats on them, for view render."""
     all_tricks = Trick.query.all()
     results = []
     for trick in all_tricks:
-        user_attempts = Attempt.query.filter_by(user=user, id=trick.id).count()
-        user_lands = Attempt.query.filter_by(user=user, id=trick.id, landed=True).count()
-        results.append({
-            "attempts": user_attempts,
-            "lands": user_lands,
-            "name": trick.name,
-            "id": trick.id,
-        })
+        results.append(get_trick_view_params(user, trick))
     return results
