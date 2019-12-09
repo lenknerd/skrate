@@ -1,5 +1,7 @@
 """Skrate application and routes for serving skateboarding data REST API."""
+import typing
 import logging
+from json import JSONEncoder
 
 from flask import Flask, session, render_template
 from flask_session import Session
@@ -14,6 +16,7 @@ sess = Session(app)
 
 # App constants
 _APP_KEY = "skrate default key"
+_LOG_LEVEL = logging.INFO 
 _SQLALCHEMY_DATABASE_URI = "postgresql://skrate_user:skrate_password@localhost:5432/postgres"
 _SESSION_TYPE = "filesystem"
 _SERVER_LOG = "/tmp/skrate_service.log"
@@ -21,11 +24,39 @@ _SERVER_LOG_FORMAT = "'%(asctime)s %(levelname)s: %(message)s'"
 _TESTING = False
 
 
+# Render id's for what to update
+_TRICK_EL_ID = "trick{}"
+_GAME_EL_ID = "game"
+
+
+class SkrateActionResponse:
+    """Response to action route, confirm route and say what to update."""
+
+    def __init__(self, route_confirm: str, update_ids: typing.List[str]) -> None:
+        """Initialize an action response object.
+        
+        Args:
+            route_confirm: echo back name of route you just ran to get this
+            update_ids: these elements need to be updated due to action
+
+        """
+        self.route_confirm = route_confirm
+        self.update_ids = update_ids
+
+    def obj(self) -> typing.Mapping[str, typing.Any]:
+        """Convert self to a json-serializable response."""
+        return vars(self)
+
+
+# json serializable object of above
+_SkrateActionResponse = typing.Mapping[str, typing.Any]
+
+
 def configure_app_logger() -> None:
     """Configure app logger to file and output."""
-    app.logger.setLevel(logging.INFO)
+    app.logger.setLevel(_LOG_LEVEL)
     file_handler = logging.FileHandler(_SERVER_LOG)
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(_LOG_LEVEL)
     file_handler.setFormatter(logging.Formatter(_SERVER_LOG_FORMAT))
     app.logger.addHandler(file_handler)
 
@@ -73,11 +104,13 @@ def index(user: str) -> str:
     """
     session["user"] = user
     app.logger.info("User %s started a session.", user)
-    return render_template("index.html", user=user)
+
+    all_tricks = models.get_all_trick_infos(app, session["user"])
+    return render_template("index.html", user=user, tricks=all_tricks)
 
 
 @app.route("/attempt/<trick_id>/<landed>/<past>")
-def attempt(trick_id: str, landed: str, past: str) -> str:
+def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     """Mark that you just landed or missed a trick called <trick>.
     
     Args:
@@ -93,22 +126,31 @@ def attempt(trick_id: str, landed: str, past: str) -> str:
 
     app.logger.info("User %s tried trick %s (landed=%s)", user, trick_id, landed)
     models.record_attempt(app, user, trick_id_int, landed_bool, game_id_if_any)
-    # return """ { "ran": "true" } """
-    return {"attempted": True}
-    # TODO if end of game, set game_id end values (complete/winner)
-    # and set session game_id back to none
+
+    # Record whether we were in a game which required view update
+    to_be_updated = [_TRICK_EL_ID.format(trick_id)]
+    if game_id_if_any is not None:
+        to_be_updated.append(_GAME_EL_ID)
+
+    # TODO update game info in database
+
+    return SkrateActionResponse("attempt", to_be_updated).obj()
 
 
 @app.route("/start_game")
-def start_game() -> str:
+def start_game() -> SkrateActionResponse:
     """Start a game under the current user."""
-    game_id = models.start_game(app, session["user"])
-    session["game_id"] = game_id
-    app.logger.info("Use %s started game, id %s", session["user"], game_id)
-    return {"started": True}
+
+    if session["game_id"] is not None:
+        raise RuntimeError("Tried to start game when one already started!")
+
+    session["game_id"] = models.start_game(app, session["user"])
+    app.logger.info("Use %s started game, id %s", session["user"], session["game_id"])
+    return SkrateActionResponse("start_game", [_GAME_EL_ID]).obj()
 
 
 # TODO
-# get refreshed game block (instructions, latest game results, record overall, etc.)
-# get refreshed trick block (updated stats)
+# get refreshed latest-game template (score so far, end result if ended, instruc, etc.)
+# get refreshed all-tricks template (updated stats)
+# get refreshed single trick template
 

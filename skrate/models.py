@@ -1,6 +1,6 @@
 """Models for key nouns in Skrate, namely tricks, attempts, games."""
 import datetime
-from typing import Optional
+from typing import Any, List, Mapping, Optional
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -107,3 +107,19 @@ def start_game(app: Flask, user: str) -> int:
         db.session.add(game)
         db.session.commit()
         app.logger.info("Started new game with id %s" % game.id)
+
+
+def get_all_trick_infos(app: Flask, user: str) -> List[Mapping[str, Any]]:
+    """Get list of all trick infos and user stats on them, for view render."""
+    all_tricks = Trick.query.all()
+    results = []
+    for trick in all_tricks:
+        user_attempts = Attempt.query.filter_by(user=user, id=trick.id).count()
+        user_lands = Attempt.query.filter_by(user=user, id=trick.id, landed=True).count()
+        results.append({
+            "attempts": user_attempts,
+            "lands": user_lands,
+            "name": trick.name,
+            "id": trick.id,
+        })
+    return results
