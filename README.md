@@ -1,3 +1,5 @@
+<img align="right" src="skrate/static/favicon.ico">
+
 # Skrate
 
 Use data mining to measure your skateboarding progression, and play
