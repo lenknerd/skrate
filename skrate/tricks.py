@@ -38,6 +38,8 @@ _TRICKS = [
     ("FS 180 Heelflip",  True,  True,  True),
     ("Bigflip",          True,  True,  True),
     ("Heelflip Bigspin", True,  True,  True),
+    ("Hardflip",         True,  True,  True),
+    ("Inward Heelflip",  True,  True,  True),
 ]
 
 
