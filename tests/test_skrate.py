@@ -1,9 +1,12 @@
 """Tests for the main skrate application."""
+import itertools
+import json
 import logging
 import os
 from typing import Any
 
 import pytest
+from flask.testing import FlaskClient
 
 import context
 from skrate import server
@@ -16,7 +19,7 @@ _TEST_DB_URI = "postgresql://skrate_test_user:skrate_test_password@localhost:543
 
 
 @pytest.fixture
-def client(monkeypatch: Any):
+def client(monkeypatch: Any) -> FlaskClient:
     """Client test fixture for flask app testing - fake client, test database."""
 
     monkeypatch.setattr(server, "_SQLALCHEMY_DATABASE_URI", _TEST_DB_URI)
@@ -42,21 +45,85 @@ def client(monkeypatch: Any):
 
 class TestSkrate:
 
-    def test_user_init(self, client) -> None:
-        """Test landing page sets user and gets trick list."""
-        rv = client.get("/johndoe")
-        assert server.session["user"] == "johndoe"
+    def test_init_and_bail(self, client: FlaskClient) -> None:
+        """Test a successful attempt leads to incrememnt on tricks stats.
+
+        Args:
+            client: the test fixture client
+
+        """
+        test_user = "johndoe"
+        test_trick_name = "Kickflip"
+        with server.app.app_context():
+            test_trick_id = models.Trick.query \
+                    .filter_by(name=test_trick_name).one().id
+
+        # Log in and check initial load page, plus session
+        rv = client.get("/%s" % test_user)
+        assert rv.status_code == 200
+        assert server.session["user"] == test_user
+        html_str = str(rv.data)
+        assert "trick%s" % test_trick_id in html_str  # should be this many ids
+        assert "Heelflip Bigspin" in html_str  # just one of the later ones
+
+        # Attempt a trick, miss it, see that stat changes when update view
+        rv = client.get("/attempt/%s/false/false" % test_trick_id)
+        assert rv.status_code == 200
+
+        rv_data = rv.get_json()
+        assert rv_data["update_game"] == False  # because we're not in a game
+        assert rv_data["update_all_tricks"] == False
+        assert rv_data["update_tricks"] == [str(test_trick_id)]
+
+        rv = client.get("/get_single_trick_view/%s" % test_trick_id)
         assert rv.status_code == 200
         html_str = str(rv.data)
-        assert "trick84" in html_str  # should be this many ids
-        assert "Heelflip Bigspin" in html_str  # just one of them
+        assert test_trick_name in html_str
+        assert "Attempts: 1 " in html_str
+        assert "Lands: 0 " in html_str
 
-    def test_attempt_success(self, client) -> None:
-        """Test a successful attempt leads to incrememnt on tricks stats."""
-        client.get("/johndoe")
-        client.get("/attempt/1/true/false")
+        # Ensure it's in the database (bit redundant but good at least once)
         db_atts = models.Attempt.query.all()
         assert len(db_atts) == 1
-        assert db_atts[0].user == "johndoe"
-        assert db_atts[0].trick.id == 1
-        assert db_atts[0].trick.name == "Kickflip"
+        assert db_atts[0].user == test_user
+        assert db_atts[0].trick.id == test_trick_id
+        assert db_atts[0].trick.name == test_trick_name
+
+    def test_land(self, client: FlaskClient) -> None:
+        """Test landing a trick.
+
+        Args:
+            client: the client test fixture
+
+        """
+        test_user = "janedoe"
+        test_trick_name = "Ollie"
+        with server.app.app_context():
+            test_trick_id = models.Trick.query \
+                    .filter_by(name=test_trick_name).one().id
+
+        rv = client.get("/%s" % test_user)
+
+        # Attempt a trick, make it, see the stat changes when update view
+        rv = client.get("/attempt/%s/true/false" % test_trick_id)
+        assert rv.status_code == 200
+
+        rv_data = rv.get_json()
+        assert rv_data["update_game"] == False  # because we're not in a game
+        assert rv_data["update_all_tricks"] == False
+        assert rv_data["update_tricks"] == [str(test_trick_id)]
+
+        rv = client.get("/get_single_trick_view/%s" % test_trick_id)
+        assert rv.status_code == 200
+        html_str = str(rv.data)
+        assert test_trick_name in html_str
+        assert "Attempts: 1 " in html_str
+        assert "Lands: 1 " in html_str
+
+        # Ensure it's in the database (bit redundant but good at least once)
+        db_atts = models.Attempt.query.all()
+        assert len(db_atts) == 1
+        assert db_atts[0].user == test_user
+        assert db_atts[0].trick.id == test_trick_id
+        assert db_atts[0].trick.name == test_trick_name
+

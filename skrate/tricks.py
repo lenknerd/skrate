@@ -1,4 +1,5 @@
 """Trick definitions for Skrate app, and function to load/update en masse."""
+from itertools import chain
 from typing import List, Optional, Tuple
 
 from flask import Flask
@@ -45,14 +46,22 @@ def trick_variants(trick_tuple: Tuple[str, bool, bool, bool]) -> List[str]:
     
     Args:
         trick_tuple: name of the trick,
-                      whether a nollie [trick] should be included,
-                      whether a switch [trick] should be included,
-                      whether a fakie [trick] should be included,
+                     whether a nollie [trick] should be included,
+                     whether a switch [trick] should be included,
+                     whether a fakie [trick] should be included
 
     """
     base = trick_tuple[0]
     prefixes = [prefix for prefix, use in zip(_PREFIXES, trick_tuple[1:]) if use]
     return [base, *[prefix + base for prefix in prefixes]]
+
+
+def all_tricks_variants() -> List[str]:
+    """Get names for all trick variants defined in _TRICKS above."""
+
+    return list(chain.from_iterable([
+        name for name in trick_variants(trick_tuple)
+    ] for trick_tuple in _TRICKS))
 
 
 def update_tricks_table(app: Flask) -> None:
@@ -63,12 +72,11 @@ def update_tricks_table(app: Flask) -> None:
 
     """
     with app.app_context():
-        for trick_tuple in _TRICKS:
-            for trick_name in trick_variants(trick_tuple):
-                # Store tricks if they're not already there
-                if not models.Trick.query.filter_by(name=trick_name).count():
-                    app.logger.info("Adding trick: %s" % trick_name)
-                    new_trick = models.Trick(name=trick_name)
-                    models.db.session.add(new_trick)
-                    models.db.session.commit()  # auto-assigns ID on commit
+        for trick_name in all_tricks_variants():
+            # Store tricks if they're not already there
+            if not models.Trick.query.filter_by(name=trick_name).count():
+                app.logger.info("Adding trick: %s" % trick_name)
+                new_trick = models.Trick(name=trick_name)
+                models.db.session.add(new_trick)
+                models.db.session.commit()  # auto-assigns ID on commit
 

@@ -24,24 +24,24 @@ _SERVER_LOG_FORMAT = "'%(asctime)s %(levelname)s: %(message)s'"
 _TESTING = False
 
 
-# Render id's for what to update
-_TRICK_EL_ID = "trick{}"
-_GAME_EL_ID = "game"
-
-
 class SkrateActionResponse:
     """Response to action route, confirm route and say what to update."""
 
-    def __init__(self, route_confirm: str, update_ids: typing.List[str]) -> None:
+    def __init__(self, route_confirm: str, update_game: bool = False,
+            update_tricks: typing.List[int] = [], update_all_tricks: bool = False) -> None:
         """Initialize an action response object.
         
         Args:
             route_confirm: echo back name of route you just ran to get this
-            update_ids: these elements need to be updated due to action
+            update_game: whether to update the game view
+            update_tricks: list of which trick views to upate
+            update_all_tricks: whether to override above and say all tricks
 
         """
         self.route_confirm = route_confirm
-        self.update_ids = update_ids
+        self.update_game = update_game
+        self.update_tricks = update_tricks
+        self.update_all_tricks = update_all_tricks
 
     def obj(self) -> typing.Mapping[str, typing.Any]:
         """Convert self to a json-serializable response."""
@@ -112,7 +112,7 @@ def index(user: str) -> str:
 @app.route("/attempt/<trick_id>/<landed>/<past>")
 def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     """Mark that you just landed or missed a trick called <trick>.
-    
+
     Args:
         trick_id: the id of the trick (should be integer format)
         landed: whether or not you landed it ('true'/'false')
@@ -128,13 +128,14 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     models.record_attempt(app, user, trick_id_int, landed_bool, game_id_if_any)
 
     # Record whether we were in a game which required view update
-    to_be_updated = [_TRICK_EL_ID.format(trick_id)]
+    to_be_updated = [trick_id]
+    redraw_game = False
     if game_id_if_any is not None:
-        to_be_updated.append(_GAME_EL_ID)
+        redraw_game = True
 
-    # TODO update game info in database
+    # TODO actuall update game state
 
-    return SkrateActionResponse("attempt", to_be_updated).obj()
+    return SkrateActionResponse("attempt", redraw_game, [trick_id], False).obj()
 
 
 @app.route("/start_game")
@@ -146,20 +147,20 @@ def start_game() -> SkrateActionResponse:
 
     session["game_id"] = models.start_game(app, session["user"])
     app.logger.info("Use %s started game, id %s", session["user"], session["game_id"])
-    return SkrateActionResponse("start_game", [_GAME_EL_ID]).obj()
+    return SkrateActionResponse("start_game", True, [], False).obj()
 
 
 @app.route("/get_single_trick_view/<trick_id>")
 def get_single_trick_view(trick_id: str) -> None:
     """Get rendered template showing the trick name, and my stats on doing it.
-    
+
     Args:
         The id of the trick you want to update/render block for.
 
     """
-    trick = models.Trick.query.filter(id=trick_id).one()
-    params = get_trick_view_params(trick)
-    return render_template("trick.html", **params)
+    trick = models.Trick.query.filter_by(id=trick_id).one()
+    trick_params = models.get_trick_view_params(session["user"], trick)
+    return render_template("trick.html", trick=trick_params)
 
 # TODO
 # get refreshed latest-game template (score so far, end result if ended, instruc, etc.)

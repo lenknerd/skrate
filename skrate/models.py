@@ -118,13 +118,14 @@ def get_trick_view_params(user: str, trick: Trick) -> Mapping[str, Any]:
 
     """
 
-    user_attempts = Attempt.query.filter_by(user=user, id=trick.id).count()
-    user_lands = Attempt.query.filter_by(user=user, id=trick.id, landed=True).count()
+    user_attempts = Attempt.query.filter_by(user=user, trick_id=trick.id).count()
+    user_lands = Attempt.query.filter_by(user=user,
+            trick_id=trick.id, landed=True).count()
     return {
         "attempts": user_attempts,
         "lands": user_lands,
         "name": trick.name,
-        "id": trick.id,
+        "id": trick.id
     }
 
 
