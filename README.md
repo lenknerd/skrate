@@ -8,7 +8,7 @@ Use data mining to measure your skateboarding progression, and play
 David Lenkner
 c. 2019
 
-### Shout-Outs
+### Shout-outs
 
 Skrate uses a PostgreSQL persistence layer via [docker container](https://hub.docker.com/_/postgres)
 with a mounted directory for data for portability.

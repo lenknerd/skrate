@@ -136,3 +136,21 @@ def get_all_trick_infos(app: Flask, user: str) -> List[Mapping[str, Any]]:
     for trick in all_tricks:
         results.append(get_trick_view_params(user, trick))
     return results
+
+
+def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
+    """Get parameters to render the game view.
+
+    Args:
+        app: the server flask application object
+        user: current user
+
+    """
+    # Temp debug TODO finish
+    turn_lines = [
+        {"classes": "list-group-item active", "text": "Turn [14]: Do work next"},
+        {"classes": "list-group-item", "text": "Turn [13]: Was good for good you"},
+        {"classes": "list-group-item", "text": "Turn [12]: Was bad for past you"},
+    ]
+    return {"turn_lines": turn_lines}
+

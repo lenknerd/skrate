@@ -1,0 +1,61 @@
+<div class="game" id="game">
+  <div>
+    <p>
+        <span class="skatebox">&nbsp<span id="newyou_letter0">S</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="newyou_letter1">K</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="newyou_letter2">A</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="newyou_letter3">T</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="newyou_letter4">E</span>&nbsp</span>
+		New You, vs.
+	</p>
+	<p>
+        <span class="skatebox">&nbsp<span id="pastyou_letter0">S</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="pastyou_letter1">K</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="pastyou_letter2">A</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="pastyou_letter3">T</span>&nbsp</span>
+		<span class="skatebox">&nbsp<span id="pastyou_letter4">E</span>&nbsp</span>
+		Past You
+	</p>
+  </div>
+  <div class="gamefeed">
+    <ul class="list-group">
+      <!-- classes should be list-group-item and optionally active li -->
+	  {% for turn_line in game_info.turn_lines %}
+        <li class="{{ turn_line.classes }}">{{ turn_line.text }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div align="right">
+    <button type="button" class="btn btn-secondary" id="newskate">New Game</button>
+  </div>
+
+</div>
+
+<!---
+
+	Game Summary
+	New You:  SKA             # make letters appear in boxes? so you can 
+	Past You: SKATE           # draw out 5 boxes even before start
+
+	Game Feed
+		# (if n > 1) Turn [N-1] # what happened
+		# (if n > 0) Turn [N] # what happened
+		Instruction/End Message
+
+	**
+
+	Turn synopsis possibiliies
+		* You matched Past You's Kickflip
+		* You bailed on the FS 180 (+K)
+		* You bailed on a FS 180 Shove-It
+		* Past you matched your Nollie
+		* Past you bailed on the FS Shove-It (+T)
+		* Past you bailed on a 360 Flip
+
+	Instruction/End Message Possibilties
+		* Your lead! Try a trick not yet landed this game.
+		* Try to land a Switch Shove-It as well
+		* New You wins! Keep progressing :)
+		* Past You wins! :(
+
+-->

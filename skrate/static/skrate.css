@@ -1,0 +1,18 @@
+.skatebox {
+  border: 1px solid black;
+  display: inline;
+  color: darkgray;
+  font-size: 120%;
+  margin-left: 2px;
+  margin-right: 2px;
+  font-family: "Comic Sans MS", cursive, sans-serif
+}
+
+.newskate {
+  padding-top: 5px;
+  text-align: right;
+}
+
+.gamefeed {
+  margin-bottom: 5px;
+}

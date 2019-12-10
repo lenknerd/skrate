@@ -48,7 +48,7 @@ class SkrateActionResponse:
         return vars(self)
 
 
-# json serializable object of above
+# json serialized object of above
 _SkrateActionResponse = typing.Mapping[str, typing.Any]
 
 
@@ -106,7 +106,11 @@ def index(user: str) -> str:
     app.logger.info("User %s started a session.", user)
 
     all_tricks = models.get_all_trick_infos(app, session["user"])
-    return render_template("index.html", user=user, tricks=all_tricks)
+
+
+    game_view_params = models.get_latest_game_params(app, session["user"])
+    return render_template("index.html", user=user, tricks=all_tricks,
+                           game_info=game_view_params)
 
 
 @app.route("/attempt/<trick_id>/<landed>/<past>")
@@ -139,7 +143,7 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
 
 
 @app.route("/start_game")
-def start_game() -> SkrateActionResponse:
+def start_game() -> _SkrateActionResponse:
     """Start a game under the current user."""
 
     if session["game_id"] is not None:
@@ -151,7 +155,7 @@ def start_game() -> SkrateActionResponse:
 
 
 @app.route("/get_single_trick_view/<trick_id>")
-def get_single_trick_view(trick_id: str) -> None:
+def get_single_trick_view(trick_id: str) -> str:
     """Get rendered template showing the trick name, and my stats on doing it.
 
     Args:
@@ -162,8 +166,10 @@ def get_single_trick_view(trick_id: str) -> None:
     trick_params = models.get_trick_view_params(session["user"], trick)
     return render_template("trick.html", trick=trick_params)
 
-# TODO
-# get refreshed latest-game template (score so far, end result if ended, instruc, etc.)
-# get refreshed all-tricks template (updated stats)
-# get refreshed single trick template
+
+@app.route("/get_latest_game_view")
+def get_latest_game_view() -> str:
+    """Get the view showing status, instructions for current or latests game."""
+    game_view_params = models.get_latest_game_params(app, session["user"])
+    return render_template("game.html", game_info=game_view_params)
 

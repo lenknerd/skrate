@@ -7,26 +7,34 @@
     <title>Skrate</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+	<link rel="stylesheet" href="{{ url_for('static', filename='skrate.css') }}">
   </head>
   <body>
 
     <div class="container">
+
       <div class="jumbotron">
         <h1>Skrate</h1>
         <p>Track your progression, battle your past self in a game of Skate!<p>
         <p>You are logged in as <em>{{ user }}</em>.</p>
       </div>
 
-      <h2>Game</h2>
-      <div class="container" id="game">
+      <h3>Game Summary</h3>
+	  <div class="container" id="outergame">
+        <div class="container" id="midgame">
+          {% include "game.html" %}
+        </div>
       </div>
 
-      <h2>Tricks</h2>
+	  <hr>
+
+      <h3>Tricks</h3>
       <div class="container" id="tricks">
         {% for trick in tricks %}
           {% include "trick.html" %}
         {% endfor %}
       </div>
+
 	</div>
 
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
