@@ -5,8 +5,16 @@ from typing import Any, List, Mapping, Optional
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
+from skrate import game_logic
+
 # Our app database
 db = SQLAlchemy()
+
+
+# Game feed parameters
+_GAME_FEED_LENGTH = 4
+_FEED_LATEST_CLASS = "list-group-item active"
+_FEED_CLASS = "list-group-item"
 
 
 def init_db_connec(app: Flask) -> None:
@@ -67,13 +75,15 @@ class Attempt(db.Model):
 
 class Game(db.Model):
     """A single game of SKATE against your past self."""
-
+    
+    # Note, complete and user_won are determined by other params, so bit
+    # redundant to store - but useful to pre-calculate since intensive
     id = db.Column(db.Integer, primary_key=True)
     attempts = db.relationship("Attempt", backref="game", lazy=True)
     complete = db.Column(db.Boolean, nullable=False)
     user = db.Column(db.String(16), nullable=False)
     user_won = db.Column(db.Boolean)  # Null if still in progress
-
+    start_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
                    game_id: Optional[bool]) -> None:
@@ -138,6 +148,17 @@ def get_all_trick_infos(app: Flask, user: str) -> List[Mapping[str, Any]]:
     return results
 
 
+def get_skate_letters_colors(score: int) -> List[Mapping[str, str]]:
+    """Get list of elements for render like {"letter": "S", "color" white"}.
+
+    Args:
+        score: integer from 0-5 indicating how many letters earned.
+
+    """
+    return [{"color": "black" if i < score else "white", "letter": letter}
+             for i, letter in enumerate(game_logic.LETTERS)]
+
+
 def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
     """Get parameters to render the game view.
 
@@ -146,11 +167,26 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
         user: current user
 
     """
-    # Temp debug TODO finish
-    turn_lines = [
-        {"classes": "list-group-item active", "text": "Turn [14]: Do work next"},
-        {"classes": "list-group-item", "text": "Turn [13]: Was good for good you"},
-        {"classes": "list-group-item", "text": "Turn [12]: Was bad for past you"},
-    ]
-    return {"turn_lines": turn_lines}
+    with app.app_context():
+        latest_game = db.Game.query.filter(Game.user == user) \
+                .order_by("start_time desc").first()
+        if latest_game is None:
+            turn_lines = [{"classes": _FEED_CLASS,
+                           "text": "Hit 'Start Game' to play!"}]
+            letters_colors = {"new": get_skate_letters_colors(0),
+                              "past": get_skate_letters_colors(0)}
+        else:
+            # This utilizes the actual game rules to generate output so far
+            game_state = game_logic.get_game_state(latest_game.attempts)
 
+            # Wrangling for something easy to drive the html template
+            classes = [_FEED_LATEST_CLASS] + [_FEED_CLASS] * (_GAME_FEED_LENGTH - 1)
+            latest_line_texts = game_state.status_feed[-1:-1 - _GAME_FEED_LENGTH:-1]
+            latest_line_texts += [''] * (_GAME_FEED_LENGTH - len(latest_line_texts))
+            turn_lines = [{"classes": class_str, "text": line_text}
+                          for class_str, line_text in zip(classes, latest_line_texts)]
+
+            letters_colors = {"new": get_skate_letters_colors(game_state.user_score),
+                              "past": get_skate_letters_colors(game_state.opponent_score)}
+
+        return {"turn_lines": turn_lines, "letters_colors": letters_colors}
