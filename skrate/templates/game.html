@@ -2,7 +2,7 @@
   <div>
     <p>
 		{% for let_col in letters_colors.new %}
-		<span class="skatebox">&nbsp<span color="{{ let_col.color }}">
+		<span class="skatebox">&nbsp<span style="color: {{ let_col.color }}">
 				{{ let_col.letter }}
 			</span>&nbsp</span>
 		{% endfor %}
@@ -10,7 +10,7 @@
 	</p>
 	<p>
 		{% for let_col in letters_colors.past %}
-		<span class="skatebox">&nbsp<span color="{{ let_col.color }}">
+		<span class="skatebox">&nbsp<span style="color: {{ let_col.color }}">
 				{{ let_col.letter }}
 			</span>&nbsp</span>
 		{% endfor %}

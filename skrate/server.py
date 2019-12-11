@@ -107,7 +107,6 @@ def index(user: str) -> str:
 
     all_tricks = models.get_all_trick_infos(app, session["user"])
 
-
     game_view_params = models.get_latest_game_params(app, session["user"])
     return render_template("index.html", user=user, tricks=all_tricks, **game_view_params)
 

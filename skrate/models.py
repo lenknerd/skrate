@@ -172,7 +172,7 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
                 .order_by(Game.start_time).first()
         if latest_game is None:
             turn_lines = [{"classes": _FEED_CLASS,
-                           "text": "Hit 'Start Game' to play!"}]
+                           "text": "Hit 'New Game' to play!"}]
             letters_colors = {"new": get_skate_letters_colors(0),
                               "past": get_skate_letters_colors(0)}
         else:
