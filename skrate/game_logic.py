@@ -66,28 +66,31 @@ class GameState:
                 attempt.landed = False
             self.trick_ids_used_up.append(attempt.trick_id)
 
+            # This is a response to the challenge last turn, resetting challenge trick
+            self.challenging_move_id = None
+
             if attempt.landed:
-                self.say("%s matched the challenge.", attempter)
+                self.say("%s matched the challenge." % attempter)
                 return False
 
             # If here, is score-changing case, player challenged and other missed
-            self.say("Missed challenge! %s gains a %s" % (attempter, LETTERS))
             if user_attempt:
                 letter_idx = self.user_score
                 self.user_score += 1
             else:
                 letter_idx = self.opponent_score
                 self.opponent_score += 1
+            self.say("Missed challenge! %s gains a %s" % (attempter, LETTERS[letter_idx]))
 
             # Lastly see if the miss results in game end
             if max(self.user_score, self.opponent_score) >= len(LETTERS):
-                self.say("%s wins!", opponent)
+                self.say("%s wins!" % opponent)
                 return True  # Game over
 
         elif attempt.landed:
             # This was not a challenge response, it initiates a challenge
-            self.say("%s landed a %s! Can %s match it?",
-                     (you, attempt.trick.name, opponent_you))
+            self.say("%s landed a %s! Can %s match it?" %
+                     (attempter, attempt.trick.name, opponent))
             self.challenging_move_id = attempt.trick_id
 
         return False  # Game not over yet

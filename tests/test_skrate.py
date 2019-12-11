@@ -1,4 +1,5 @@
 """Tests for the main skrate application."""
+import datetime
 import itertools
 import json
 import logging
@@ -127,3 +128,101 @@ class TestSkrate:
         assert db_atts[0].trick.id == test_trick_id
         assert db_atts[0].trick.name == test_trick_name
 
+    def test_game_logic(self, client: FlaskClient) -> None:
+        """Test game logic where opponent wins, just back-end logic not view
+
+        Args:
+            client: the client test fixture
+
+        """
+        test_user = "janedoe"
+        n_wins_first = 3
+        n_drops_next = 5
+        with server.app.app_context():
+            # Just some trick id's to use
+            test_tricks = models.Trick.query.limit(n_wins_first + n_drops_next + 1)
+
+            # Declare game object
+            game = models.Game(attempts=[], complete=False, user=test_user)
+            models.db.session.add(game)
+            models.db.session.commit()
+
+            # Use lands first 3, opp misses all, should be opp: SKA
+            for trick in test_tricks[0:n_wins_first]:
+                user_att = models.Attempt(trick_id=trick.id,
+                                          game_id=game.id,
+                                          user=test_user,
+                                          landed=True,
+                                          time_of_attempt=datetime.datetime.utcnow())
+                models.db.session.add(user_att)
+
+                oppo_att = models.Attempt(trick_id=trick.id,
+                                          game_id=game.id,
+                                          user="past_" + test_user,
+                                          landed=False,
+                                          time_of_attempt=datetime.datetime.utcnow())
+                models.db.session.add(oppo_att)
+
+                models.db.session.commit()
+
+            models.db.session.add(game)
+            models.db.session.commit()  # re-sync attempts
+            game_state = models.get_game_state(game.attempts, test_user)
+            assert game_state.user_score == 0
+            assert game_state.opponent_score == n_wins_first
+
+            # Check that now if both land one, no score change. Use last trick ID
+            user_att = models.Attempt(trick_id=test_tricks[-1].id,
+                                      game_id=game.id,
+                                      user=test_user,
+                                      landed=True,
+                                      time_of_attempt=datetime.datetime.utcnow())
+            models.db.session.add(user_att)
+
+            oppo_att = models.Attempt(trick_id=test_tricks[-1].id,
+                                      game_id=game.id,
+                                      user="past_" + test_user,
+                                      landed=True,
+                                      time_of_attempt=datetime.datetime.utcnow())
+            models.db.session.add(oppo_att)
+            models.db.session.commit()
+
+            models.db.session.add(game)
+            models.db.session.commit()  # re-sync attempts
+            game_state = models.get_game_state(game.attempts, test_user)
+            assert game_state.user_score == 0
+            assert game_state.opponent_score == n_wins_first
+
+
+            # A one-off repeat should count as fail, turn over priority to opponent
+            user_att = models.Attempt(trick_id=test_tricks[0].id,
+                                      game_id=game.id,
+                                      user=test_user,
+                                      landed=False,
+                                      time_of_attempt=datetime.datetime.utcnow())
+            models.db.session.add(user_att)
+            models.db.session.commit()
+
+            for trick in test_tricks[n_wins_first:n_wins_first + n_drops_next]:
+                user_att = models.Attempt(trick_id=trick.id,
+                                          game_id=game.id,
+                                          user="past_" + test_user,
+                                          landed=True,
+                                          time_of_attempt=datetime.datetime.utcnow())
+                models.db.session.add(user_att)
+
+                oppo_att = models.Attempt(trick_id=trick.id,
+                                          game_id=game.id,
+                                          user=test_user,
+                                          landed=False,
+                                          time_of_attempt=datetime.datetime.utcnow())
+                models.db.session.add(oppo_att)
+
+                models.db.session.commit()
+
+            models.db.session.add(game)
+            models.db.session.commit()  # re-sync attempts
+            game_state = models.get_game_state(game.attempts, test_user)
+            assert game_state.user_score == n_drops_next
+            assert game_state.opponent_score == n_wins_first
+            assert game_state.status_feed[0] == "Past you wins!"

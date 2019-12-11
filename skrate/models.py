@@ -181,7 +181,7 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
 
             # Wrangling for something easy to drive the html template
             classes = [_FEED_LATEST_CLASS] + [_FEED_CLASS] * (_GAME_FEED_LENGTH - 1)
-            latest_line_texts = game_state.status_feed[-1:-1 - _GAME_FEED_LENGTH:-1]
+            latest_line_texts = game_state.status_feed[:_GAME_FEED_LENGTH]  # already rev order
             latest_line_texts += [''] * (_GAME_FEED_LENGTH - len(latest_line_texts))
             turn_lines = [{"classes": class_str, "text": line_text}
                           for class_str, line_text in zip(classes, latest_line_texts)]
@@ -212,6 +212,6 @@ def get_game_state(attempts: List[Attempt], user_name: str) -> game_logic.GameSt
     for i, attempt in enumerate(sorted_attempts):
         if game_state.apply_attempt(attempt) and i != len(attempts) - 1:
             # We should only be looking at one game here, so shouldn't happen
-            raise("Internal error! Game finished before last attempt.")
+            raise RuntimeError("Internal error! Game finished before last attempt.")
 
     return game_state
