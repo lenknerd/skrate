@@ -113,7 +113,7 @@ def start_game(app: Flask, user: str) -> int:
 
     """
     with app.app_context():
-        game = Game(attempts=[], complete=False, user=user)
+        game = db.Game(attempts=[], complete=False, user=user)
         db.session.add(game)
         db.session.commit()
         app.logger.info("Started new game with id %s" % game.id)
@@ -168,8 +168,8 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
 
     """
     with app.app_context():
-        latest_game = db.Game.query.filter(Game.user == user) \
-                .order_by("start_time desc").first()
+        latest_game = Game.query.filter(Game.user == user) \
+                .order_by(Game.start_time).first()
         if latest_game is None:
             turn_lines = [{"classes": _FEED_CLASS,
                            "text": "Hit 'Start Game' to play!"}]
@@ -177,7 +177,7 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
                               "past": get_skate_letters_colors(0)}
         else:
             # This utilizes the actual game rules to generate output so far
-            game_state = game_logic.get_game_state(latest_game.attempts)
+            game_state = get_game_state(latest_game.attempts)
 
             # Wrangling for something easy to drive the html template
             classes = [_FEED_LATEST_CLASS] + [_FEED_CLASS] * (_GAME_FEED_LENGTH - 1)
@@ -190,3 +190,28 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
                               "past": get_skate_letters_colors(game_state.opponent_score)}
 
         return {"turn_lines": turn_lines, "letters_colors": letters_colors}
+
+
+def get_game_state(attempts: List[Attempt], user_name: str) -> game_logic.GameState:
+    """Calculate the game state given ordered list of attempts.
+
+    Args:
+        attempts: the attempts by either user in this game
+        user_name: the user name logged in as
+
+    """
+    # Bit wasteful to do this each time want it, but still plenty fast
+    sorted_attempts = sorted(attempts, key=lambda a: a.time_of_attempt)
+
+    # Sanity check, confirm alternating turns starting with user
+    assert all(a.user == user_name for a in sorted_attempts[::2]), game_logic._TURN_FAULT
+    assert all(a.user != user_name for a in sorted_attempts[1::2]), game_logic._TURN_FAULT
+
+    # Build up state and return it
+    game_state = game_logic.GameState(user_name)
+    for i, attempt in enumerate(sorted_attempts):
+        if game_state.apply_attempt(attempt) and i != len(attempts) - 1:
+            # We should only be looking at one game here, so shouldn't happen
+            raise("Internal error! Game finished before last attempt.")
+
+    return game_state

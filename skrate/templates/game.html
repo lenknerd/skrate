@@ -1,26 +1,26 @@
 <div class="game" id="game">
   <div>
     <p>
-        <span class="skatebox">&nbsp<span id="newyou_letter0">S</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="newyou_letter1">K</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="newyou_letter2">A</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="newyou_letter3">T</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="newyou_letter4">E</span>&nbsp</span>
+		{% for let_col in letters_colors.new %}
+		<span class="skatebox">&nbsp<span color="{{ let_col.color }}">
+				{{ let_col.letter }}
+			</span>&nbsp</span>
+		{% endfor %}
 		New You, vs.
 	</p>
 	<p>
-        <span class="skatebox">&nbsp<span id="pastyou_letter0">S</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="pastyou_letter1">K</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="pastyou_letter2">A</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="pastyou_letter3">T</span>&nbsp</span>
-		<span class="skatebox">&nbsp<span id="pastyou_letter4">E</span>&nbsp</span>
-		Past You
+		{% for let_col in letters_colors.past %}
+		<span class="skatebox">&nbsp<span color="{{ let_col.color }}">
+				{{ let_col.letter }}
+			</span>&nbsp</span>
+		{% endfor %}
+   		Past You
 	</p>
   </div>
   <div class="gamefeed">
     <ul class="list-group">
       <!-- classes should be list-group-item and optionally active li -->
-	  {% for turn_line in game_info.turn_lines %}
+	  {% for turn_line in turn_lines %}
         <li class="{{ turn_line.classes }}">{{ turn_line.text }}</li>
       {% endfor %}
     </ul>

@@ -4,8 +4,6 @@ Two-player only for now, versus your past self for progression check.
 """
 from typing import List, Optional
 
-from skrate import models
-
 
 LETTERS = ("S", "K", "A", "T", "E")
 
@@ -33,17 +31,17 @@ class GameState:
         self.status_feed = ["Starting game! %s to go first." % user_name]
 
         # If previous move was a landed challenge, what trick was it
-        self.challenging_move_id: Optional[int] = None
+        self.challenging_move_id = None  # Optional[int] ??
 
         # What tricks have been landed, not allowed to repeat
         # unless it was previous landed challenging trick
-        self.trick_ids_used_up: List[int]
+        self.trick_ids_used_up = []  # List[int] ??
 
     def say(self, message: str) -> None:
         """Add a message to the start of the status feed (so can show top-N)."""
         self.status_feed.insert(0, message)
 
-    def apply_attempt(self, attempt: models.Attempt) -> bool:
+    def apply_attempt(self, attempt: "models.Attempt") -> bool:
         """Update the game state given an attempt that just happened.
         
         Args:
@@ -70,7 +68,7 @@ class GameState:
 
             if attempt.landed:
                 self.say("%s matched the challenge.", attempter)
-                continue
+                return False
 
             # If here, is score-changing case, player challenged and other missed
             self.say("Missed challenge! %s gains a %s" % (attempter, LETTERS))
@@ -93,28 +91,3 @@ class GameState:
             self.challenging_move_id = attempt.trick_id
 
         return False  # Game not over yet
-
-
-def get_game_state(attempts: List[models.Attempt], user_name: str) -> GameState:
-    """Calculate the game state given ordered list of attempts.
-
-    Args:
-        attempts: the attempts by either user in this game
-        user_name: the user name logged in as
-
-    """
-    # Bit wasteful to do this each time want it, but still plenty fast
-    sorted_attempts = sorted(attempts, key=lambda a: a.time_of_attempt)
-
-    # Sanity check, confirm alternating turns starting with user
-    assert all(a.user == user_name for a in sorted_attempts[::2]), _TURN_FAULT
-    assert all(a.user != user_name for a in sorted_attempts[1::2]), _TURN_FAULT
-
-    # Build up state and return it
-    game_state = GameState(user_name)
-    for i, attempt in enumerate(sorted_attempts):
-        if game_state.apply_attempt(attempt) and i != len(attempts) - 1:
-            # We should only be looking at one game here, so shouldn't happen
-            raise("Internal error! Game finished before last attempt.")
-
-    return game_state

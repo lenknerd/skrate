@@ -109,8 +109,7 @@ def index(user: str) -> str:
 
 
     game_view_params = models.get_latest_game_params(app, session["user"])
-    return render_template("index.html", user=user, tricks=all_tricks,
-                           game_info=game_view_params)
+    return render_template("index.html", user=user, tricks=all_tricks, **game_view_params)
 
 
 @app.route("/attempt/<trick_id>/<landed>/<past>")
@@ -171,5 +170,5 @@ def get_single_trick_view(trick_id: str) -> str:
 def get_latest_game_view() -> str:
     """Get the view showing status, instructions for current or latests game."""
     game_view_params = models.get_latest_game_params(app, session["user"])
-    return render_template("game.html", game_info=game_view_params)
+    return render_template("game.html", **game_view_params)
 
