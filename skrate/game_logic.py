@@ -94,3 +94,8 @@ class GameState:
             self.challenging_move_id = attempt.trick_id
 
         return False  # Game not over yet
+
+    def is_ongoing(self) -> bool:
+        """Whether the game is complete/won by someone."""
+        return self.user_score < len(LETTERS) and self.opponent_score < len(LETTERS)
+

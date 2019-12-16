@@ -7,6 +7,7 @@ import os
 from typing import Any
 
 import pytest
+from flask.ctx import AppContext
 from flask.testing import FlaskClient
 
 import context
@@ -42,6 +43,28 @@ def client(monkeypatch: Any) -> FlaskClient:
 
     # Finally wipe tables again to leave in clean state
     models.drop_db_tables(server.app)
+
+
+def _game_turn(trick_id: int, landed: bool, user_name: str, game_id: int,
+               client: FlaskClient, server_app_context: AppContext) -> None:
+    """Have a player try a trick as part of a game.
+
+    Args:
+        trick_id: id of the trick
+        landed: whether or not they landed the trick
+        user_name: attempting player
+        game_id: what game this is a part of
+        client: test client
+        server_app_context: test server context
+
+    """
+    user_att = models.Attempt(trick_id=trick_id,
+                              game_id=game_id,
+                              user=user_name,
+                              landed=landed,
+                              time_of_attempt=datetime.datetime.utcnow())
+    models.db.session.add(user_att)
+    models.db.session.commit()
 
 
 class TestSkrate:
@@ -138,32 +161,20 @@ class TestSkrate:
         test_user = "janedoe"
         n_wins_first = 3
         n_drops_next = 5
-        with server.app.app_context():
+        test_tricks = []  # List[models.Trick]
+        with server.app.app_context() as server_context:
             # Just some trick id's to use
             test_tricks = models.Trick.query.limit(n_wins_first + n_drops_next + 1)
 
             # Declare game object
-            game = models.Game(attempts=[], complete=False, user=test_user)
+            game = models.Game(attempts=[], user=test_user)
             models.db.session.add(game)
             models.db.session.commit()
 
             # Use lands first 3, opp misses all, should be opp: SKA
             for trick in test_tricks[0:n_wins_first]:
-                user_att = models.Attempt(trick_id=trick.id,
-                                          game_id=game.id,
-                                          user=test_user,
-                                          landed=True,
-                                          time_of_attempt=datetime.datetime.utcnow())
-                models.db.session.add(user_att)
-
-                oppo_att = models.Attempt(trick_id=trick.id,
-                                          game_id=game.id,
-                                          user="past_" + test_user,
-                                          landed=False,
-                                          time_of_attempt=datetime.datetime.utcnow())
-                models.db.session.add(oppo_att)
-
-                models.db.session.commit()
+                _game_turn(trick.id, True, test_user, game.id, client, server_context)
+                _game_turn(trick.id, False, "past_" + test_user, game.id, client, server_context)
 
             models.db.session.add(game)
             models.db.session.commit()  # re-sync attempts
@@ -171,54 +182,27 @@ class TestSkrate:
             assert game_state.user_score == 0
             assert game_state.opponent_score == n_wins_first
 
-            # Check that now if both land one, no score change. Use last trick ID
-            user_att = models.Attempt(trick_id=test_tricks[-1].id,
-                                      game_id=game.id,
-                                      user=test_user,
-                                      landed=True,
-                                      time_of_attempt=datetime.datetime.utcnow())
-            models.db.session.add(user_att)
+            # Now if both miss one, expect no score change. Use last trick ID
+            _game_turn(test_tricks[-1].id, False, test_user, game.id, client, server_context)
+            _game_turn(test_tricks[-1].id, False, "past_" + test_user, game.id, client, server_context)
 
-            oppo_att = models.Attempt(trick_id=test_tricks[-1].id,
-                                      game_id=game.id,
-                                      user="past_" + test_user,
-                                      landed=True,
-                                      time_of_attempt=datetime.datetime.utcnow())
-            models.db.session.add(oppo_att)
-            models.db.session.commit()
+            # Now if both land one, expect no score change. Use last trick ID
+            _game_turn(test_tricks[-1].id, True, test_user, game.id, client, server_context)
+            _game_turn(test_tricks[-1].id, True, "past_" + test_user, game.id, client, server_context)
 
             models.db.session.add(game)
             models.db.session.commit()  # re-sync attempts
             game_state = models.get_game_state(game.attempts, test_user)
             assert game_state.user_score == 0
             assert game_state.opponent_score == n_wins_first
-
 
             # A one-off repeat should count as fail, turn over priority to opponent
-            user_att = models.Attempt(trick_id=test_tricks[0].id,
-                                      game_id=game.id,
-                                      user=test_user,
-                                      landed=False,
-                                      time_of_attempt=datetime.datetime.utcnow())
-            models.db.session.add(user_att)
-            models.db.session.commit()
+            _game_turn(test_tricks[0].id, False, test_user, game.id, client, server_context)
 
+            # Now opponent lands the next n_drops_next (5, enough to win)
             for trick in test_tricks[n_wins_first:n_wins_first + n_drops_next]:
-                user_att = models.Attempt(trick_id=trick.id,
-                                          game_id=game.id,
-                                          user="past_" + test_user,
-                                          landed=True,
-                                          time_of_attempt=datetime.datetime.utcnow())
-                models.db.session.add(user_att)
-
-                oppo_att = models.Attempt(trick_id=trick.id,
-                                          game_id=game.id,
-                                          user=test_user,
-                                          landed=False,
-                                          time_of_attempt=datetime.datetime.utcnow())
-                models.db.session.add(oppo_att)
-
-                models.db.session.commit()
+                _game_turn(trick.id, True, "past_" + test_user, game.id, client, server_context)
+                _game_turn(trick.id, False, test_user, game.id, client, server_context)
 
             models.db.session.add(game)
             models.db.session.commit()  # re-sync attempts
@@ -226,3 +210,26 @@ class TestSkrate:
             assert game_state.user_score == n_drops_next
             assert game_state.opponent_score == n_wins_first
             assert game_state.status_feed[0] == "Past you wins!"
+
+    def test_trick_choice(self, client) -> None:
+        """Test function to choose most likely trick for user.
+        
+        Args:
+            client: the test client
+
+        """
+
+        test_user = "janedoe"
+        test_trick_name = "Ollie"
+        with server.app.app_context() as server_app:
+            test_trick_id = models.Trick.query \
+                    .filter_by(name=test_trick_name).one().id
+
+        rv = client.get("/%s" % test_user)
+
+        # Land a trick once
+        rv = client.get("/attempt/%s/true/false" % test_trick_id)
+
+        # Check that it's now most likely trick, no tricks prohibited
+        best_trick = models.game_trick_choice(server.app, test_user, [])
+        assert best_trick == test_trick_id

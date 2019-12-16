@@ -1,4 +1,10 @@
 <div class="trick" id="trick{{ trick.id }}">
-	<h4>{{ trick.name }}</h4>
-	<p>Attempts: {{ trick.attempts }}  /  Lands: {{ trick.lands }} </p>
+  <h4>{{ trick.name }}</h4>
+  <div class="btn-group" role="group">
+    <button type="button" class="btn btn-success btn-trick-success" id="landed-{{ trick.id }}">
+      Landed</button>
+    <button type="button" class="btn btn-success btn-trick-miss" id="missed-{{ trick.id }}">
+      Missed</button>
+  </div>
+  <p>Attempts: {{ trick.attempts }}  /  Lands: {{ trick.lands }} </p>
 </div>

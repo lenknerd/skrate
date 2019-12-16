@@ -63,7 +63,7 @@ def configure_app_logger() -> None:
 
 def init_app(debug: bool) -> None:
     """Initialize Skrate applciation.
-    
+
     Args:
         debug: whether or not to run in debug mode.
 
@@ -84,6 +84,7 @@ def init_app(debug: bool) -> None:
 
 
 def set_up_database() -> None:
+    """Create any tables not already present, load tricks not there."""
     app.logger.info("Setting up database tables...")
     models.create_db_tables(app)
     app.logger.info("Loading up tricks...")
@@ -134,8 +135,8 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     redraw_game = False
     if game_id_if_any is not None:
         redraw_game = True
-
-    # TODO actuall update game state
+        # Need to get state of game to figure out whether oppoent response call needed
+        models.opponent_response_if_any(app, user, game_id_if_any)
 
     return SkrateActionResponse("attempt", redraw_game, [trick_id], False).obj()
 
