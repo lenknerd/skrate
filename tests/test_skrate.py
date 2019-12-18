@@ -4,6 +4,7 @@ import itertools
 import json
 import logging
 import os
+import random
 from typing import Any
 
 import pytest
@@ -19,8 +20,12 @@ _TEST_DB_URI = "postgresql://skrate_test_user:skrate_test_password@localhost:543
 
 @pytest.fixture
 def client(monkeypatch: Any) -> FlaskClient:
-    """Client test fixture for flask app testing - fake client, test database."""
+    """Client test fixture for flask app testing - fake client, test database.
+    
+    Args:
+        monkeypatch: monkeypatch object passed around by pytest
 
+    """
     monkeypatch.setattr(server, "_SQLALCHEMY_DATABASE_URI", _TEST_DB_URI)
     monkeypatch.setattr(server, "_TESTING", True)
     monkeypatch.setattr(server, "_LOG_LEVEL", logging.WARN)
@@ -40,6 +45,29 @@ def client(monkeypatch: Any) -> FlaskClient:
 
     # Finally wipe tables again to leave in clean state
     models.drop_db_tables(server.app)
+
+
+@pytest.fixture
+def fix_rand_uniform(monkeypatch: Any) -> float:
+    """Instead of random.uniform returning between vals, always return lower
+
+    Args:
+        monkeypatch: monkeypatch object passed around by pytest
+
+    """
+    def fix_rand_value(lo_bound: float, up_bound: float) -> float:
+        """Patch function that returns some (FIXED) number in a range.
+
+        Args:
+            lo_bound: lower bound from which to choose rand
+            up_bound: upper bound from which to choose rand
+
+        """
+        # In this patch test function for determinism, just return lower bound
+        return lo_bound
+
+    monkeypatch.setattr(random, "uniform", fix_rand_value)
+    return fix_rand_value(0, 1)  # Give value that would normally be given for uniform
 
 
 def _game_turn(trick_id: int, landed: bool, user_name: str, game_id: int,
@@ -170,6 +198,8 @@ class TestSkrate:
 
             # Use lands first 3, opp misses all, should be opp: SKA
             for trick in test_tricks[0:n_wins_first]:
+                # Note these call model functions not client turns, because client attempt
+                # would also automatically choose oppoenent response, we want to test that
                 _game_turn(trick.id, True, test_user, game.id, client, server_context)
                 _game_turn(trick.id, False, "past_" + test_user, game.id, client, server_context)
 
@@ -208,11 +238,12 @@ class TestSkrate:
             assert game_state.opponent_score == n_wins_first
             assert game_state.status_feed[0] == "Past you wins!"
 
-    def test_trick_choice(self, client) -> None:
+    def test_trick_choice(self, client: FlaskClient, fix_rand_uniform: float) -> None:
         """Test function to choose most likely trick for user.
         
         Args:
             client: the test client
+            fix_rand_uniform: test fixture for value returned instead of uniform rand
 
         """
 

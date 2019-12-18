@@ -18,9 +18,6 @@ _GAME_FEED_LENGTH = 4
 _FEED_LATEST_CLASS = "list-group-item active"
 _FEED_CLASS = "list-group-item"
 
-# In game of SKATE, determine land probability based on last _ tries
-_RECENT_ATTEMPTS_WINDOW = 10
-
 
 def init_db_connec(app: Flask) -> None:
     """Connect to persistence layer for Skrate app.
@@ -105,7 +102,7 @@ def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
         app.logger.info("Committed new attempt with id %s" % att.id)
 
 
-def opponent_response_if_any(app: Flask, user: str, game_id_if_any: int) -> None:
+def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int]) -> None:
     """If in an ongoing game (not completed), past self needs to respond.
 
     Args:
@@ -114,91 +111,26 @@ def opponent_response_if_any(app: Flask, user: str, game_id_if_any: int) -> None
         game_id_if_any: integer game id if we're in one
 
     """
-    if game_id_if_any:
-        with app.app_context():
-            game = Game.query.filter_by(id=game_id_if_any).one()
-            game_state = get_game_state(game.attempts, user)
-            if game_state.is_ongoing():
-                # Opponent to choose a trick - if on a challenge, must be same
-                trick_to_try = game_state.challenging_move_id
-                if game_state.challenging_move_id is None:
-                    # If not on a challenge, logic is do user's best trick next
-                    trick_to_try = game_trick_choice(app, user, game_state.trick_ids_used_up)
+    if game_id_if_any is None:
+        return
 
-                # Figure whether
-                odds = get_odds(user, trick_to_try)
-                land = random.uniform(0, 1) < odds
-                record_attempt(app, "past_" + user, trick_to_try, land, game_id_if_any)
-
-
-def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int]) -> int:
-    """Find the trick the user is most likely to land.
-
-    Args:
-        app: the Flask web server application object
-        user: the user trying the trick
-        tricks_prohibited: Tricks can't use (e.g. already hit in game)
-
-    """
     with app.app_context():
-        # Probably a nicer way to do this but this works... TODO reconsider. Also beware of
-        # https://dba.stackexchange.com/questions/75551/returning-rows-in-postgresql-with-a-table-called-user
-        statement = """
-        -- get all attempts by user, indexed by how many times we've tried that trick since
-        WITH attempts_indexed AS (
-            SELECT trick_id,
-                ROW_NUMBER() over (PARTITION BY trick_id ORDER BY time_of_attempt DESC) AS tries_ago,
-                landed
-            FROM attempt
-            WHERE attempt.user = :username
-        )
+        game = Game.query.filter_by(id=game_id_if_any).one()
+        game_state = get_game_state(game.attempts, user)
+        if game_state.is_ongoing():
+            # Opponent to choose a trick - if on a challenge, must be same
+            trick_to_try = game_state.challenging_move_id
+            if game_state.challenging_move_id is None:
+                # If not on a challenge, logic is do user's best trick next
+                print("************vvv***")
+                print(type(db))
+                trick_to_try = game_logic.game_trick_choice(app, user,
+                        game_state.trick_ids_used_up, db)
 
-        -- limit at most to only the last _ times we tried each trick
-        , attempts_recent AS (
-            SELECT trick_id,
-                sum(case WHEN landed THEN 1 ELSE 0 END) AS n_landed,
-                sum(case WHEN landed THEN 0 ELSE 1 END) AS n_missed
-            FROM attempts_indexed
-            WHERE tries_ago <= :nlimit
-            GROUP BY trick_id
-        )
-
-        -- if we've used up all the tricks tried before, try one we haven't tried (with 0% chance)
-        , tricks_not_tried AS (
-            SELECT id,
-                0.0 as land_rate_recent
-            FROM trick
-            WHERE id NOT IN (SELECT trick_id FROM attempt WHERE attempt.user = :username)
-        )
-
-        , unordered AS (
-            SELECT trick_id,
-                CASE WHEN n_landed + n_missed = 0 THEN 0.0
-                ELSE n_landed::decimal / (n_landed + n_missed)::decimal END AS land_rate_recent
-            FROM attempts_recent
-        )
-
-        select * from unordered
-        ORDER BY land_rate_recent DESC
-        """
-
-        result = db.session.execute(statement, {"username": user, "nlimit": _RECENT_ATTEMPTS_WINDOW})
-        for row in result:
-            if row[0] not in tricks_prohibited:
-                return row[0]
-
-    raise RuntimeError("All tricks used up! Crazy outcome expected to never happen!")
-
-
-def get_odds(user: str, trick_id: int) -> float:
-    """Get odds of user landing a trick based on recent attempts.
-
-    Args:
-        user: the user trying the trick
-        trick_id: which trick is in question
-
-    """
-    pass
+            # Figure whether
+            odds = game_logic.get_odds(user, trick_to_try, db)
+            land = random.uniform(0, 1) < odds
+            record_attempt(app, "past_" + user, trick_to_try, land, game_id_if_any)
 
 
 def start_game(app: Flask, user: str) -> int:
