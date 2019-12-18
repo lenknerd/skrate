@@ -142,7 +142,7 @@ def start_game(app: Flask, user: str) -> int:
 
     """
     with app.app_context():
-        game = db.Game(attempts=[], user=user)
+        game = Game(attempts=[], user=user)
         db.session.add(game)
         db.session.commit()
         app.logger.info("Started new game with id %s" % game.id)
@@ -206,7 +206,7 @@ def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
                               "past": get_skate_letters_colors(0)}
         else:
             # This utilizes the actual game rules to generate output so far
-            game_state = get_game_state(latest_game.attempts)
+            game_state = get_game_state(latest_game.attempts, user)
 
             # Wrangling for something easy to drive the html template
             classes = [_FEED_LATEST_CLASS] + [_FEED_CLASS] * (_GAME_FEED_LENGTH - 1)

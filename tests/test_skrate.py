@@ -48,15 +48,19 @@ def client(monkeypatch: Any) -> FlaskClient:
 
 
 @pytest.fixture
-def fix_rand_uniform(monkeypatch: Any) -> float:
-    """Instead of random.uniform returning between vals, always return lower
+def fix_rand_uniform_sequence(monkeypatch: Any) -> float:
+    """Instead of random.uniform returning between vals, always return above const
 
     Args:
         monkeypatch: monkeypatch object passed around by pytest
 
     """
+    # Holder for fixed sequence of randoms for testing, cycle back to start at end
+    _vals_sequence = [0.0]
+    _i = 0
+
     def fix_rand_value(lo_bound: float, up_bound: float) -> float:
-        """Patch function that returns some (FIXED) number in a range.
+        """Patch function that returns some random (pull from def sequence)
 
         Args:
             lo_bound: lower bound from which to choose rand
@@ -64,10 +68,14 @@ def fix_rand_uniform(monkeypatch: Any) -> float:
 
         """
         # In this patch test function for determinism, just return lower bound
-        return lo_bound
+        nonlocal _i, _vals_sequence
+        v_return = _vals_sequence[_i]
+        _i = (_i + 1) % len(_vals_sequence)
+        return v_return
 
     monkeypatch.setattr(random, "uniform", fix_rand_value)
-    return fix_rand_value(0, 1)  # Give value that would normally be given for uniform
+    # Return this so the test function can modify the sequence if needed
+    return _vals_sequence
 
 
 def _game_turn(trick_id: int, landed: bool, user_name: str, game_id: int,
@@ -236,7 +244,7 @@ class TestSkrate:
             assert game_state.opponent_score == n_wins_first
             assert game_state.status_feed[0] == "Past you wins!"
 
-    def test_trick_choice(self, client: FlaskClient, fix_rand_uniform: float) -> None:
+    def test_trick_choice(self, client: FlaskClient, fix_rand_uniform_sequence: Any) -> None:
         """Test function to choose most likely trick for user.
         
         Args:
@@ -244,6 +252,8 @@ class TestSkrate:
             fix_rand_uniform: test fixture for value returned instead of uniform rand
 
         """
+        # Always take the most likely next trick, don't randomize
+        fix_rand_uniform_sequence[0] = 1.0
 
         test_user = "janedoe"
         test_trick_name = "Ollie"
@@ -259,3 +269,37 @@ class TestSkrate:
         # Check that it's now most likely trick, no tricks prohibited
         best_trick = game_logic.game_trick_choice(server.app, test_user, [], models.db)
         assert best_trick == test_trick_id
+
+    def test_client_game(self, client: FlaskClient, fix_rand_uniform_sequence: Any) -> None:
+        """Test game progress from end-to-end client standpoint.
+
+        Args:
+            client: the test client
+
+        """
+        # Always take the most likely next trick, don't randomize
+        fix_rand_uniform_sequence[0] = 1.0
+
+        test_user = "janedoe"
+        test_trick_name = "Ollie"
+        with server.app.app_context() as server_app:
+            test_trick_id = models.Trick.query \
+                    .filter_by(name=test_trick_name).one().id
+
+        rv = client.get("/%s" % test_user)
+
+        # Start a game
+        rv = client.get("/start_game")
+        assert rv.status_code == 200
+
+        rv_data = rv.get_json()
+        assert rv_data["update_game"] == True
+        assert rv_data["update_all_tricks"] == False
+        assert len(rv_data["update_tricks"]) == 0
+
+        # Now test that game update window includes the start instruction message
+        rv = client.get("/get_latest_game_view")
+        assert rv.status_code == 200
+        html_str = str(rv.data)
+        assert "Starting game!" in html_str
+

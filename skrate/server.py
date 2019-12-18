@@ -145,7 +145,7 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
 def start_game() -> _SkrateActionResponse:
     """Start a game under the current user."""
 
-    if session["game_id"] is not None:
+    if session.get("game_id") is not None:
         raise RuntimeError("Tried to start game when one already started!")
 
     session["game_id"] = models.start_game(app, session["user"])
