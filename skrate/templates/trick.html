@@ -3,8 +3,10 @@
   <div class="btn-group" role="group">
     <button type="button" class="btn btn-success btn-trick-success" id="landed-{{ trick.id }}">
       Landed</button>
-    <button type="button" class="btn btn-success btn-trick-miss" id="missed-{{ trick.id }}">
+    <button type="button" class="btn btn-danger btn-trick-miss" id="missed-{{ trick.id }}">
       Missed</button>
   </div>
-  <p>Attempts: {{ trick.attempts }}  /  Lands: {{ trick.lands }} </p>
+  <div id="trickstats{{ trick.id }}">
+	{% include "trickstats.html" %}
+  </div>
 </div>
