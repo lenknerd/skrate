@@ -153,5 +153,13 @@ def get_odds(user: str, trick_id: int, db: SQLAlchemy) -> float:
         db: the persistence layer connection
 
     """
-    pass
+    with app.app_context():
+        # Would be more efficient to use different query only on one trick, but trivial scale for now
+        statement = _read_sql_resource("rates_by_trick")
+        result = db.session.execute(statement, {"username": user, "nlimit": _RECENT_ATTEMPTS_WINDOW})
+        for row in result:
+            if row[0] == trick_id:
+                return row[1]
+
+    raise ValueError("Requested odds for non-existent trick id " + str(trick_id))
 
