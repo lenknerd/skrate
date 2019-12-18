@@ -11,10 +11,7 @@ from flask.ctx import AppContext
 from flask.testing import FlaskClient
 
 import context
-from skrate import server
-from skrate import models
-from skrate import tricks
-
+from skrate import game_logic, models, server, tricks
 
 # Test database fully separate from production
 _TEST_DB_URI = "postgresql://skrate_test_user:skrate_test_password@localhost:5432/skrate_test_db"
@@ -231,5 +228,5 @@ class TestSkrate:
         rv = client.get("/attempt/%s/true/false" % test_trick_id)
 
         # Check that it's now most likely trick, no tricks prohibited
-        best_trick = models.game_trick_choice(server.app, test_user, [])
+        best_trick = game_logic.game_trick_choice(server.app, test_user, [], models.db)
         assert best_trick == test_trick_id

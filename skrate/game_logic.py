@@ -2,14 +2,26 @@
 
 Two-player only for now, versus your past self for progression check.
 """
+import random
+import os
 from typing import List, Optional
 
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
+# Letters to get in a game of SKATE
 LETTERS = ("S", "K", "A", "T", "E")
 
+# Constants in various messages
 _YOU_NAMES = ("New you", "Past you")
-
 _TURN_FAULT = "Internal error! Turns order not as expected!"
+
+# In game of SKATE, determine land probability based on last _ tries
+_RECENT_ATTEMPTS_WINDOW = 10
+
+# Constant to randomize computer user trick choices (will use trick with best
+# success rate still available, but will skip to next best with this probability)
+_TRICK_RANDOM_SKIP = 0.5
 
 
 class GameState:
@@ -98,4 +110,48 @@ class GameState:
     def is_ongoing(self) -> bool:
         """Whether the game is complete/won by someone."""
         return self.user_score < len(LETTERS) and self.opponent_score < len(LETTERS)
+
+
+def _read_sql_resource(query_name: str) -> str:
+    """Read a .sql file from directory of this python file.
+
+    Args:
+        query_name: file name minus .sql extension, expected in same dir as this module
+
+    """
+    with open(os.path.join(os.path.dirname(__file__), query_name + ".sql")) as qfile:
+        return qfile.read()
+
+
+def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: SQLAlchemy) -> int:
+    """Find the trick the user is most likely to land.
+
+    Args:
+        app: the Flask web server application object
+        user: the user trying the trick
+        tricks_prohibited: Tricks can't use (e.g. already hit in game)
+        db: the persistence layer connection
+
+    """
+    with app.app_context():
+        statement = _read_sql_resource("rates_by_trick")
+
+        result = db.session.execute(statement, {"username": user, "nlimit": _RECENT_ATTEMPTS_WINDOW})
+        for row in result:
+            if row[0] not in tricks_prohibited and random.uniform(0, 1) < _TRICK_RANDOM_SKIP:
+                return row[0]
+
+    raise RuntimeError("All tricks used up! Crazy outcome expected to never happen!")
+
+
+def get_odds(user: str, trick_id: int, db: SQLAlchemy) -> float:
+    """Get odds of user landing a trick based on recent attempts.
+
+    Args:
+        user: the user trying the trick
+        trick_id: which trick is in question
+        db: the persistence layer connection
+
+    """
+    pass
 
