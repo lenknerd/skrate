@@ -84,8 +84,8 @@ In this app, your opponent in a game of SKATE is your past self, to measure whet
 (whether you land more tricks more reliably than you used to). Your opponents' likelihood of landing
 any trick is determined by your own history of tries on that trick. The app algorithm takes a fixed
 window of most recent tries of the trick, so as you progress your opponent also "gets better". The history
-window length is defined in `_RECENT_ATTEMPTS_WINDOW` in [game\_logic.py](skrate/game_logic.py) - roughly
-speaking, increasing that means including "older versions" of oneself in a progression measure (have I
+window length is defined in `_RECENT_ATTEMPTS_WINDOW_OLDEST` in [game\_logic.py](skrate/game_logic.py) -
+roughly, increasing that means including "older versions" of oneself in a progression measure (have I
 gotten better since last year, vs. better since last week).
 
 If your opponent is challenging (choosing a trick to try), they will pick the trick with the best

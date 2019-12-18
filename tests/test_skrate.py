@@ -242,7 +242,7 @@ class TestSkrate:
             game_state = models.get_game_state(game.attempts, test_user)
             assert game_state.user_score == n_drops_next
             assert game_state.opponent_score == n_wins_first
-            assert game_state.status_feed[0] == "Past you wins!"
+            assert game_state.status_feed[0] == "[Turn 20]: Past you wins!"
 
     def test_trick_choice(self, client: FlaskClient, fix_rand_uniform_sequence: Any) -> None:
         """Test function to choose most likely trick for user.
@@ -263,8 +263,9 @@ class TestSkrate:
 
         rv = client.get("/%s" % test_user)
 
-        # Land a trick once
-        rv = client.get("/attempt/%s/true/false" % test_trick_id)
+        # Land a trick twice (needs to be more than once ago to consider)
+        for i in range(2):
+            rv = client.get("/attempt/%s/true/false" % test_trick_id)
 
         # Check that it's now most likely trick, no tricks prohibited
         best_trick = game_logic.game_trick_choice(server.app, test_user, [], models.db)
@@ -281,16 +282,24 @@ class TestSkrate:
         fix_rand_uniform_sequence[0] = 1.0
 
         test_user = "janedoe"
-        test_trick_name = "Ollie"
         with server.app.app_context() as server_app:
-            test_trick_id = models.Trick.query \
-                    .filter_by(name=test_trick_name).one().id
+            test_tricks = models.Trick.query.all()
 
         rv = client.get("/%s" % test_user)
+
+        # First land a trick twice before starting game, to init success rate for one
+        for i in range(2):
+            rv = client.get("/attempt/%s/true/false" % test_tricks[0].id)
+            assert rv.status_code == 200
 
         # Start a game
         rv = client.get("/start_game")
         assert rv.status_code == 200
+
+        # Check if we get the current game based on id, no attempts yet
+        game_id = server.session["game_id"]
+        game = models.Game.query.filter_by(id=game_id).one()
+        assert len(game.attempts) == 0
 
         rv_data = rv.get_json()
         assert rv_data["update_game"] == True
@@ -303,3 +312,27 @@ class TestSkrate:
         html_str = str(rv.data)
         assert "Starting game!" in html_str
 
+        # Land a trick, confirm that the response includes instruction to update game window
+        rv = client.get("/attempt/%s/true/false" % test_tricks[0].id)
+        assert rv.status_code == 200
+        rv_data = rv.get_json()
+        assert rv_data["update_game"] == True
+
+        # Opponent should have responded with a land since init'd odds to 1 on this
+        rv = client.get("/get_latest_game_view")
+        assert rv.status_code == 200
+        html_str = str(rv.data)
+        assert "Past you matched the challenge." in html_str
+
+        # Now attempt a new trick not seen before by opponent and land it
+        rv = client.get("/attempt/%s/true/false" % test_tricks[1].id)
+        assert rv.status_code == 200
+        rv_data = rv.get_json()
+        assert rv_data["update_game"] == True
+
+        # See that opponent now responded with a miss, never saw this trick before
+        rv = client.get("/get_latest_game_view")
+        assert rv.status_code == 200
+        html_str = str(rv.data)
+        assert "Missed challenge! Past you " in html_str
+       

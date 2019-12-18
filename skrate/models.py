@@ -102,7 +102,7 @@ def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
         app.logger.info("Committed new attempt with id %s" % att.id)
 
 
-def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int]) -> None:
+def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int]) -> bool:
     """If in an ongoing game (not completed), past self needs to respond.
 
     Args:
@@ -110,27 +110,35 @@ def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int
         user: the name of the current user (not past_ self)
         game_id_if_any: integer game id if we're in one
 
+    Returns:
+        Whether or not the game is ongoing
+
     """
     if game_id_if_any is None:
-        return
+        return False
 
     with app.app_context():
         game = Game.query.filter_by(id=game_id_if_any).one()
         game_state = get_game_state(game.attempts, user)
-        if game_state.is_ongoing():
-            # Opponent to choose a trick - if on a challenge, must be same
-            trick_to_try = game_state.challenging_move_id
-            if game_state.challenging_move_id is None:
-                # If not on a challenge, logic is do user's best trick next
-                print("************vvv***")
-                print(type(db))
-                trick_to_try = game_logic.game_trick_choice(app, user,
-                        game_state.trick_ids_used_up, db)
+        if not game_state.is_ongoing():
+            return False
 
-            # Figure whether
-            odds = game_logic.get_odds(user, trick_to_try, db)
-            land = random.uniform(0, 1) < odds
-            record_attempt(app, "past_" + user, trick_to_try, land, game_id_if_any)
+        # Opponent to choose a trick - if on a challenge, must be same
+        trick_to_try = game_state.challenging_move_id
+        if game_state.challenging_move_id is None:
+            # If not on a challenge, logic is do user's best trick next
+            trick_to_try = game_logic.game_trick_choice(app, user,
+                    game_state.trick_ids_used_up, db)
+
+        # Figure whether opponent lands
+        odds = game_logic.get_odds(app, user, trick_to_try, db)
+        land = random.uniform(0, 1) <= odds
+        record_attempt(app, "past_" + user, trick_to_try, land, game_id_if_any)
+
+        # Refresh game with any opponent attempt above, and see if game is finished
+        game_updated = Game.query.filter_by(id=game_id_if_any).one()
+        game_state_updated = get_game_state(game_updated.attempts, user)
+        return game_state_updated.is_ongoing()
 
 
 def start_game(app: Flask, user: str) -> int:
@@ -146,6 +154,8 @@ def start_game(app: Flask, user: str) -> int:
         db.session.add(game)
         db.session.commit()
         app.logger.info("Started new game with id %s" % game.id)
+
+    return game.id
 
 
 def get_trick_view_params(user: str, trick: Trick) -> Mapping[str, Any]:
@@ -188,16 +198,17 @@ def get_skate_letters_colors(score: int) -> List[Mapping[str, str]]:
              for i, letter in enumerate(game_logic.LETTERS)]
 
 
-def get_latest_game_params(app: Flask, user: str) -> Mapping[str, Any]:
+def get_latest_game_params(app: Flask, user: str, game_id: int) -> Mapping[str, Any]:
     """Get parameters to render the game view.
 
     Args:
         app: the server flask application object
         user: current user
+        game_id: current game id
 
     """
     with app.app_context():
-        latest_game = Game.query.filter(Game.user == user) \
+        latest_game = Game.query.filter(Game.user == user, Game.id == game_id) \
                 .order_by(Game.start_time).first()
         if latest_game is None:
             turn_lines = [{"classes": _FEED_CLASS,
@@ -236,11 +247,10 @@ def get_game_state(attempts: List[Attempt], user_name: str) -> game_logic.GameSt
     assert all(a.user == user_name for a in sorted_attempts[::2]), game_logic._TURN_FAULT
     assert all(a.user != user_name for a in sorted_attempts[1::2]), game_logic._TURN_FAULT
 
-    # Build up state and return it
+    # Build up state and return it... note if no attempts yet that's ok
     game_state = game_logic.GameState(user_name)
     for i, attempt in enumerate(sorted_attempts):
-        if game_state.apply_attempt(attempt) and i != len(attempts) - 1:
-            # We should only be looking at one game here, so shouldn't happen
-            raise RuntimeError("Internal error! Game finished before last attempt.")
+        if game_state.apply_attempt(attempt):
+            break
 
     return game_state

@@ -17,7 +17,8 @@ _YOU_NAMES = ("New you", "Past you")
 _TURN_FAULT = "Internal error! Turns order not as expected!"
 
 # In game of SKATE, determine land probability based on last _ tries
-_RECENT_ATTEMPTS_WINDOW = 10
+_RECENT_ATTEMPTS_WINDOW_OLDEST = 10
+_RECENT_ATTEMPTS_WINDOW_NEWEST = 1
 
 # Constant to randomize computer user trick choices (will use trick with best
 # success rate still available, but will skip to next best with this probability)
@@ -39,19 +40,24 @@ class GameState:
         self.opponent_score = 0
         self.user_name = user_name
 
-        # Messages updating on instructions and what happened
-        self.status_feed = ["Starting game! %s to go first." % user_name]
+        self.turn_idx = 0
 
         # If previous move was a landed challenge, what trick was it
         self.challenging_move_id = None  # Optional[int] ??
 
         # What tricks have been landed, not allowed to repeat
         # unless it was previous landed challenging trick
-        self.trick_ids_used_up = []  # List[int] ??
+        self.trick_ids_used_up = []
+
+        # Messages updating on instructions and what happened
+        self.status_feed = ["Starting game! %s to go first." % user_name]
 
     def say(self, message: str) -> None:
         """Add a message to the start of the status feed (so can show top-N)."""
-        self.status_feed.insert(0, message)
+        if message != "":
+            self.status_feed.insert(0, "[Turn %s]: %s" % (self.turn_idx, message))
+        else:
+            self.status_feed.insert(0, "")
 
     def apply_attempt(self, attempt: "models.Attempt") -> bool:
         """Update the game state given an attempt that just happened.
@@ -82,7 +88,9 @@ class GameState:
             self.challenging_move_id = None
 
             if attempt.landed:
-                self.say("%s matched the challenge." % attempter)
+                next_instruc = "" if user_attempt else "Try something else!"
+                self.say("%s matched the challenge. %s" % (attempter, next_instruc))
+                self.turn_idx += 1
                 return False
 
             # If here, is score-changing case, player challenged and other missed
@@ -104,7 +112,11 @@ class GameState:
             self.say("%s landed a %s! Can %s match it?" %
                      (attempter, attempt.trick.name, opponent))
             self.challenging_move_id = attempt.trick_id
+        else:
+            # This was not a challenge, and was a miss, nothing to do but report
+            self.say("%s missed a %s, back to %s" % (attempter, attempt.trick.name, opponent))
 
+        self.turn_idx += 1
         return False  # Game not over yet
 
     def is_ongoing(self) -> bool:
@@ -135,8 +147,10 @@ def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: S
     """
     with app.app_context():
         statement = _read_sql_resource("rates_by_trick")
-
-        result = db.session.execute(statement, {"username": user, "nlimit": _RECENT_ATTEMPTS_WINDOW})
+        # In choosing a trick, don't consider misses/lands within this game
+        result = db.session.execute(statement, {"username": user,
+                                                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
+                                                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
         for row in result:
             if row[0] not in tricks_prohibited and random.uniform(0, 1) > _TRICK_RANDOM_SKIP:
                 return row[0]
@@ -144,10 +158,11 @@ def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: S
     raise RuntimeError("All tricks used up! Crazy outcome expected to never happen!")
 
 
-def get_odds(user: str, trick_id: int, db: SQLAlchemy) -> float:
+def get_odds(app: Flask, user: str, trick_id: int, db: SQLAlchemy) -> float:
     """Get odds of user landing a trick based on recent attempts.
 
     Args:
+        app: the Flask web server application object
         user: the user trying the trick
         trick_id: which trick is in question
         db: the persistence layer connection
@@ -156,7 +171,9 @@ def get_odds(user: str, trick_id: int, db: SQLAlchemy) -> float:
     with app.app_context():
         # Would be more efficient to use different query only on one trick, but trivial scale for now
         statement = _read_sql_resource("rates_by_trick")
-        result = db.session.execute(statement, {"username": user, "nlimit": _RECENT_ATTEMPTS_WINDOW})
+        result = db.session.execute(statement, {"username": user,
+                                                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
+                                                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
         for row in result:
             if row[0] == trick_id:
                 return row[1]

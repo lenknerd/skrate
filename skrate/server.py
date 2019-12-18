@@ -104,11 +104,13 @@ def index(user: str) -> str:
 
     """
     session["user"] = user
+    session["game_id"] = None
+    session["prev_game_id"] = None
     app.logger.info("User %s started a session.", user)
 
     all_tricks = models.get_all_trick_infos(app, session["user"])
 
-    game_view_params = models.get_latest_game_params(app, session["user"])
+    game_view_params = models.get_latest_game_params(app, session["user"], session["game_id"])
     return render_template("index.html", user=user, tricks=all_tricks, **game_view_params)
 
 
@@ -125,7 +127,7 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     landed_bool = landed == "true"  # would be nice if Flask checked type hints?
     trick_id_int = int(trick_id)
     user = "past_" + session["user"] if past == "true" else session["user"]
-    game_id_if_any = session.get("game_id")
+    game_id_if_any = session.get("game_id", None)
 
     app.logger.info("User %s tried trick %s (landed=%s)", user, trick_id, landed)
     models.record_attempt(app, user, trick_id_int, landed_bool, game_id_if_any)
@@ -136,7 +138,11 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     if game_id_if_any is not None:
         redraw_game = True
         # Need to get state of game to figure out whether oppoent response call needed
-        models.opponent_response_if_any(app, user, game_id_if_any)
+        game_ongoing = models.opponent_response_if_any(app, user, game_id_if_any)
+        if not game_ongoing:
+            # Special case, game not ongoing but leave old one up for display until start new
+            session["prev_game_id"] = session["game_id"]
+            session["game_id"] = None
 
     return SkrateActionResponse("attempt", redraw_game, [trick_id], False).obj()
 
@@ -169,6 +175,8 @@ def get_single_trick_stats(trick_id: str) -> str:
 @app.route("/get_latest_game_view")
 def get_latest_game_view() -> str:
     """Get the view showing status, instructions for current or latests game."""
-    game_view_params = models.get_latest_game_params(app, session["user"])
+    # Possible these can both be None as ID's if just loaded page, that's fine
+    game_id = session["game_id"] if session["game_id"] is not None else session["prev_game_id"]
+    game_view_params = models.get_latest_game_params(app, session["user"], game_id)
     return render_template("game.html", **game_view_params)
 

@@ -1,5 +1,5 @@
--- Get recent success rate of a user for each trick, over last X attempts of that trick
--- Incidentally, the table name in attempt.user is important here - see
+-- Get recent success rate of a user for each trick, over last X attempts of that trick (minus most
+-- recent, for in current game of SKATE). FYI the table name in attempt.user is important here - see
 -- https://dba.stackexchange.com/questions/75551/returning-rows-in-postgresql-with-a-table-called-user
 
 
@@ -11,7 +11,7 @@ WITH attempts_indexed AS
                   landed 
          FROM     attempt 
          WHERE    attempt.USER = :username ) 
--- Limit at most to only the last _ times we tried each trick 
+-- Limit at most to only the last _ times we tried each trick, minus most recent
 , attempts_recent AS 
 ( 
          SELECT   trick_id, 
@@ -26,19 +26,14 @@ WITH attempts_indexed AS
                            ELSE 1 
                   END) AS n_missed 
          FROM     attempts_indexed 
-         WHERE    tries_ago <= :nlimit 
+         WHERE    tries_ago <= :nlimit and tries_ago > :nmin
          GROUP BY trick_id ) 
--- If we've used up all the tricks tried before, try one we haven't tried (with 0% chance) 
-, tricks_not_tried AS 
+-- If above data set doesn't provide insight on a trick, fallback any trick is 0.0 
+, all_tricks_zeros AS 
 ( 
-       SELECT id, 
+       SELECT id as trick_id, 
               0.0 AS land_rate_recent 
-       FROM   trick 
-       WHERE  id NOT IN 
-              ( 
-                     SELECT trick_id 
-                     FROM   attempt 
-                     WHERE  attempt.USER = :username) ) 
+       FROM   trick ) 
 -- Divide out for success rate, handle div by 0 error 
 , unordered AS 
 ( 
@@ -49,9 +44,9 @@ WITH attempts_indexed AS
               END AS land_rate_recent 
        FROM   attempts_recent ) 
 -- Lastly combined tried and not tried, and sort for best success rates first 
-SELECT * 
-FROM     unordered 
-UNION ALL
-SELECT *
-FROM     tricks_not_tried
-ORDER BY land_rate_recent DESC
+SELECT all_tricks_zeros.trick_id,
+       coalesce(unordered.land_rate_recent, all_tricks_zeros.land_rate_recent) as land_rate_recent
+FROM   unordered
+RIGHT OUTER JOIN all_tricks_zeros
+              ON unordered.trick_id = all_tricks_zeros.trick_id
+ORDER BY 2 DESC
