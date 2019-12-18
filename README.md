@@ -88,10 +88,6 @@ window length is defined in `_RECENT_ATTEMPTS_WINDOW` in [game\_logic.py](skrate
 speaking, increasing that means including "older versions" of oneself in a progression measure (have I
 gotten better since last year, vs. better since last week).
 
-To play, simply hit `New Game` and follow the instructions in the feed near the top. It will update you
-on which tricks your opponent tries and which they land. As you make or land tricks, log them with the
-red and green land/miss buttons in the Tricks section.
-
 If your opponent is challenging (choosing a trick to try), they will pick the trick with the best
 probability of landing, with a randomization factor to sometimes take less reliable tricks and "mix up"
 the game a bit, to get a different game every time. That randomization factor is controlled by
