@@ -124,12 +124,11 @@ class TestSkrate:
         assert rv_data["update_all_tricks"] == False
         assert rv_data["update_tricks"] == [str(test_trick_id)]
 
-        rv = client.get("/get_single_trick_view/%s" % test_trick_id)
+        rv = client.get("/get_single_trick_stats/%s" % test_trick_id)
         assert rv.status_code == 200
         html_str = str(rv.data)
-        assert test_trick_name in html_str
         assert "Attempts: 1 " in html_str
-        assert "Lands: 0 " in html_str
+        assert "Lands: 0<" in html_str
 
         # Ensure it's in the database (bit redundant but good at least once)
         db_atts = models.Attempt.query.all()
@@ -162,12 +161,11 @@ class TestSkrate:
         assert rv_data["update_all_tricks"] == False
         assert rv_data["update_tricks"] == [str(test_trick_id)]
 
-        rv = client.get("/get_single_trick_view/%s" % test_trick_id)
+        rv = client.get("/get_single_trick_stats/%s" % test_trick_id)
         assert rv.status_code == 200
         html_str = str(rv.data)
-        assert test_trick_name in html_str
         assert "Attempts: 1 " in html_str
-        assert "Lands: 1 " in html_str
+        assert "Lands: 1<" in html_str
 
         # Ensure it's in the database (bit redundant but good at least once)
         db_atts = models.Attempt.query.all()
