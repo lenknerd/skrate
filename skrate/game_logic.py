@@ -138,7 +138,7 @@ def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: S
 
         result = db.session.execute(statement, {"username": user, "nlimit": _RECENT_ATTEMPTS_WINDOW})
         for row in result:
-            if row[0] not in tricks_prohibited and random.uniform(0, 1) < _TRICK_RANDOM_SKIP:
+            if row[0] not in tricks_prohibited and random.uniform(0, 1) > _TRICK_RANDOM_SKIP:
                 return row[0]
 
     raise RuntimeError("All tricks used up! Crazy outcome expected to never happen!")
