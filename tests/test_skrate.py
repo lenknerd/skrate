@@ -242,7 +242,7 @@ class TestSkrate:
             game_state = models.get_game_state(game.attempts, test_user)
             assert game_state.user_score == n_drops_next
             assert game_state.opponent_score == n_wins_first
-            assert game_state.status_feed[0] == "[Turn 20]: Past you wins!"
+            assert game_state.status_feed[-1].msg_text == "[Turn 20]: Past you wins!"
 
     def test_trick_choice(self, client: FlaskClient, fix_rand_uniform_sequence: Any) -> None:
         """Test function to choose most likely trick for user.
@@ -335,4 +335,4 @@ class TestSkrate:
         assert rv.status_code == 200
         html_str = str(rv.data)
         assert "Missed challenge! Past you " in html_str
-       
+

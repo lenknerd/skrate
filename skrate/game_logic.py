@@ -4,7 +4,7 @@ Two-player only for now, versus your past self for progression check.
 """
 import random
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -23,6 +23,23 @@ _RECENT_ATTEMPTS_WINDOW_NEWEST = 1
 # Constant to randomize computer user trick choices (will use trick with best
 # success rate still available, but will skip to next best with this probability)
 _TRICK_RANDOM_SKIP = 0.5
+
+
+class GameFeedMessage:
+    """A game feed message."""
+
+    def __init__(self, msg_text: str, msg_type: str="") -> None:
+        """Initialze a game feed message.
+        
+        Args:
+            msg_text: the text of the message
+            msg_type: controls coloring or other options
+
+        """
+        self.msg_text = msg_text
+        self.msg_type = ""
+        if msg_type:
+            self.msg_type = "list-group-item-" + msg_type  # primary, success, danger
 
 
 class GameState:
@@ -50,14 +67,19 @@ class GameState:
         self.trick_ids_used_up = []
 
         # Messages updating on instructions and what happened
-        self.status_feed = ["Starting game! %s to go first." % user_name]
+        self.status_feed = []
+        self.say("Starting game! %s up first." % user_name, "primary")
 
-    def say(self, message: str) -> None:
-        """Add a message to the start of the status feed (so can show top-N)."""
-        if message != "":
-            self.status_feed.insert(0, "[Turn %s]: %s" % (self.turn_idx, message))
-        else:
-            self.status_feed.insert(0, "")
+    def say(self, message: str, msg_type: str="") -> None:
+        """Add a message to the start of the status feed (so can show top-N).
+        
+        Args:
+            message: The message to put in the feed
+            msg_type: type of message ('success', 'primary', '')
+
+        """
+        self.status_feed.append(
+                GameFeedMessage("[Turn %s]: %s" % (self.turn_idx, message), msg_type))
 
     def apply_attempt(self, attempt: "models.Attempt") -> bool:
         """Update the game state given an attempt that just happened.
@@ -73,14 +95,14 @@ class GameState:
         attempter, opponent = _YOU_NAMES if user_attempt else _YOU_NAMES[::-1]
 
         if attempt.trick_id in self.trick_ids_used_up:
-            self.say("Trick already used! Treating as miss for game purposes.")
+            self.say("Trick already used! Treating as miss for game purposes.", "dark")
             attempt.landed = False
 
         if self.challenging_move_id is not None:
             # Check player tried the right trick, and mark it as used up
             if attempt.trick_id != self.challenging_move_id:
                 self.say("Wrong trick, treating as a miss for game purposes. "
-                          "%s was supposed to try a %s" % (attempter, attempt.trick.name))
+                          "%s was supposed to try a %s" % (attempter, attempt.trick.name), "dark")
                 attempt.landed = False
             self.trick_ids_used_up.append(attempt.trick_id)
 
@@ -89,7 +111,7 @@ class GameState:
 
             if attempt.landed:
                 next_instruc = "" if user_attempt else "Try something else!"
-                self.say("%s matched the challenge. %s" % (attempter, next_instruc))
+                self.say("%s matched the challenge. %s" % (attempter, next_instruc), "success")
                 self.turn_idx += 1
                 return False
 
@@ -100,17 +122,17 @@ class GameState:
             else:
                 letter_idx = self.opponent_score
                 self.opponent_score += 1
-            self.say("Missed challenge! %s gains a %s" % (attempter, LETTERS[letter_idx]))
+            self.say("Missed challenge! %s gains a %s" % (attempter, LETTERS[letter_idx]), "danger")
 
             # Lastly see if the miss results in game end
             if max(self.user_score, self.opponent_score) >= len(LETTERS):
-                self.say("%s wins!" % opponent)
+                self.say("%s wins!" % opponent, "primary")
                 return True  # Game over
 
         elif attempt.landed:
             # This was not a challenge response, it initiates a challenge
             self.say("%s landed a %s! Can %s match it?" %
-                     (attempter, attempt.trick.name, opponent))
+                     (attempter, attempt.trick.name, opponent), "warning")
             self.challenging_move_id = attempt.trick_id
         else:
             # This was not a challenge, and was a miss, nothing to do but report
@@ -147,7 +169,6 @@ def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: S
     """
     with app.app_context():
         statement = _read_sql_resource("rates_by_trick")
-        # In choosing a trick, don't consider misses/lands within this game
         result = db.session.execute(statement, {"username": user,
                                                 "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
                                                 "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
@@ -156,6 +177,23 @@ def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: S
                 return row[0]
 
     raise RuntimeError("All tricks used up! Crazy outcome expected to never happen!")
+
+
+def get_odds_lookup_dict(app: Flask, user: str, db: SQLAlchemy) -> Dict[int, float]:
+    """Get dict to look up odds of landing trick by trick id.
+
+    Args:
+        app: The flask server application
+        user: the user to look up land rate for
+        db: the persistence layer connection
+
+    """
+    with app.app_context():
+        statement = _read_sql_resource("rates_by_trick")
+        result = db.session.execute(statement, {"username": user,
+                                                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
+                                                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
+        return {row[0]: row[1] for row in result}
 
 
 def get_odds(app: Flask, user: str, trick_id: int, db: SQLAlchemy) -> float:

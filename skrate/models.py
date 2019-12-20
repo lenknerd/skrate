@@ -15,8 +15,6 @@ db = SQLAlchemy()
 
 # Game feed parameters
 _GAME_FEED_LENGTH = 4
-_FEED_LATEST_CLASS = "list-group-item active"
-_FEED_CLASS = "list-group-item"
 
 
 def init_db_connec(app: Flask) -> None:
@@ -179,12 +177,19 @@ def get_trick_view_params(user: str, trick: Trick) -> Mapping[str, Any]:
 
 
 def get_all_trick_infos(app: Flask, user: str) -> List[Mapping[str, Any]]:
-    """Get list of all trick infos and user stats on them, for view render."""
+    """Get list of all trick infos and user stats on them, ordered by land rate.
+    
+    Args:
+        app: the Flask server application object
+        user: user current logged in in session
+
+    """
     all_tricks = Trick.query.all()
-    results = []
-    for trick in all_tricks:
-        results.append(get_trick_view_params(user, trick))
-    return results
+    trick_odds_dict = game_logic.get_odds_lookup_dict(app, user, db)
+    tricks_sorted = sorted(all_tricks,
+                           key=lambda trick: trick_odds_dict[trick.id],
+                           reverse=True)
+    return [get_trick_view_params(user, trick) for trick in tricks_sorted]
 
 
 def get_skate_letters_colors(score: int) -> List[Mapping[str, str]]:
@@ -211,21 +216,15 @@ def get_latest_game_params(app: Flask, user: str, game_id: int) -> Mapping[str, 
         latest_game = Game.query.filter(Game.user == user, Game.id == game_id) \
                 .order_by(Game.start_time).first()
         if latest_game is None:
-            turn_lines = [{"classes": _FEED_CLASS,
+            turn_lines = [{"classes": "list-group-item",
                            "text": "Hit 'New Game' to play!"}]
             letters_colors = {"new": get_skate_letters_colors(0),
                               "past": get_skate_letters_colors(0)}
         else:
             # This utilizes the actual game rules to generate output so far
             game_state = get_game_state(latest_game.attempts, user)
-
-            # Wrangling for something easy to drive the html template
-            classes = [_FEED_LATEST_CLASS] + [_FEED_CLASS] * (_GAME_FEED_LENGTH - 1)
-            latest_line_texts = game_state.status_feed[:_GAME_FEED_LENGTH]  # already rev order
-            latest_line_texts += [''] * (_GAME_FEED_LENGTH - len(latest_line_texts))
-            turn_lines = [{"classes": class_str, "text": line_text}
-                          for class_str, line_text in zip(classes, latest_line_texts)]
-
+            turn_lines = [{"classes": "list-group-item " + msg.msg_type, "text": msg.msg_text}
+                          for msg in game_state.status_feed]
             letters_colors = {"new": get_skate_letters_colors(game_state.user_score),
                               "past": get_skate_letters_colors(game_state.opponent_score)}
 
