@@ -7,7 +7,8 @@ import os
 from typing import Dict, List, Optional
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy  # type: ignore
+
 
 # Letters to get in a game of SKATE
 LETTERS = ("S", "K", "A", "T", "E")
@@ -60,17 +61,17 @@ class GameState:
         self.turn_idx = 0
 
         # If previous move was a landed challenge, what trick was it
-        self.challenging_move_id = None  # Optional[int] ??
+        self.challenging_move_id: Optional[int] = None
 
         # What tricks have been landed, not allowed to repeat
         # unless it was previous landed challenging trick
-        self.trick_ids_used_up = []
+        self.trick_ids_used_up: List[int] = []
 
         # Messages updating on instructions and what happened
-        self.status_feed = []
-        self.say("Starting game! %s up first." % user_name, "primary")
+        self.status_feed: List[GameFeedMessage] = []
+        self._say("Starting game! %s up first." % user_name, "primary")
 
-    def say(self, message: str, msg_type: str="") -> None:
+    def _say(self, message: str, msg_type: str="") -> None:
         """Add a message to the start of the status feed (so can show top-N).
         
         Args:
@@ -81,37 +82,39 @@ class GameState:
         self.status_feed.append(
                 GameFeedMessage("[Turn %s]: %s" % (self.turn_idx, message), msg_type))
 
-    def apply_attempt(self, attempt: "models.Attempt") -> bool:
+    def apply_attempt(self, trick_id: int, trick_name: str, landed: bool, user: str) -> bool:
         """Update the game state given an attempt that just happened.
         
         Args:
-            attempt: the attempt object (what trick, whether landed).
+            trick_id: the id of the trick tried
+            trick_name: the name of the trick being tried
+            landed: whether or not the trick was landed
+            user: who was attempting the trick
 
         Returns:
             Whether the game is over
 
         """
-        user_attempt = attempt.user == self.user_name
+        user_attempt = user == self.user_name
         attempter, opponent = _YOU_NAMES if user_attempt else _YOU_NAMES[::-1]
 
-        if attempt.trick_id in self.trick_ids_used_up:
-            self.say("Trick already used! Treating as miss for game purposes.", "dark")
-            attempt.landed = False
+        if trick_id in self.trick_ids_used_up:
+            self._say("Trick already used! Treating as miss for game purposes.", "dark")
+            landed = False
 
         if self.challenging_move_id is not None:
             # Check player tried the right trick, and mark it as used up
-            if attempt.trick_id != self.challenging_move_id:
-                self.say("Wrong trick, treating as a miss for game purposes. "
-                          "%s was supposed to try a %s" % (attempter, attempt.trick.name), "dark")
-                attempt.landed = False
-            self.trick_ids_used_up.append(attempt.trick_id)
+            if trick_id != self.challenging_move_id:
+                self._say("Wrong trick, treating as a miss for game purposes.", "dark")
+                landed = False
+            self.trick_ids_used_up.append(trick_id)
 
             # This is a response to the challenge last turn, resetting challenge trick
             self.challenging_move_id = None
 
-            if attempt.landed:
+            if landed:
                 next_instruc = "" if user_attempt else "Try something else!"
-                self.say("%s matched the challenge. %s" % (attempter, next_instruc), "success")
+                self._say("%s matched the challenge. %s" % (attempter, next_instruc), "success")
                 self.turn_idx += 1
                 return False
 
@@ -122,21 +125,21 @@ class GameState:
             else:
                 letter_idx = self.opponent_score
                 self.opponent_score += 1
-            self.say("Missed challenge! %s gains a %s" % (attempter, LETTERS[letter_idx]), "danger")
+            self._say("Missed challenge! %s gains a %s" % (attempter, LETTERS[letter_idx]), "danger")
 
             # Lastly see if the miss results in game end
             if max(self.user_score, self.opponent_score) >= len(LETTERS):
-                self.say("%s wins!" % opponent, "primary")
+                self._say("%s wins!" % opponent, "primary")
                 return True  # Game over
 
-        elif attempt.landed:
+        elif landed:
             # This was not a challenge response, it initiates a challenge
-            self.say("%s landed a %s! Can %s match it?" %
-                     (attempter, attempt.trick.name, opponent), "warning")
-            self.challenging_move_id = attempt.trick_id
+            self._say("%s landed a %s! Can %s match it?" %
+                     (attempter, trick_name, opponent), "warning")
+            self.challenging_move_id = trick_id
         else:
             # This was not a challenge, and was a miss, nothing to do but report
-            self.say("%s missed a %s, back to %s" % (attempter, attempt.trick.name, opponent))
+            self._say("%s missed a %s, back to %s" % (attempter, trick_name, opponent))
 
         self.turn_idx += 1
         return False  # Game not over yet

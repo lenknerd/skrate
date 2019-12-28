@@ -66,7 +66,7 @@ for a list of general command, and for help on a specific command,
 ### Skating
 
 Pick any username, and browse to `http://<your-ip>:5000/<anyusername>` to log in (security is not a
-thing in Skrate yet).
+thing in Skrate yet). If just running locally, `<your-ip>` can be `localhost`.
 
 You don't have to start a game of SKATE - any time you miss or land trick, click "Miss" or "Land" by
 the appropriate trick in the list to record the attempt and update your stats.

@@ -4,7 +4,7 @@ import random
 from typing import Any, List, Mapping, Optional
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy  # type: ignore
 # from sqlalchemy import text
 
 from skrate import game_logic
@@ -54,7 +54,7 @@ def drop_db_tables(app: Flask) -> None:
         db.drop_all()
 
 
-class Trick(db.Model):
+class Trick(db.Model):  # type: ignore
     """A type of trick (i.e., kickflip) - **NOT** a specific attempt of one."""
 
     id = db.Column(db.Integer, primary_key=True)
@@ -62,7 +62,7 @@ class Trick(db.Model):
     attempts = db.relationship("Attempt", backref="trick", lazy=True)
 
 
-class Attempt(db.Model):
+class Attempt(db.Model):  # type: ignore
     """An attempt at a trick, with landed or not result."""
 
     id = db.Column(db.Integer, primary_key=True)
@@ -73,7 +73,7 @@ class Attempt(db.Model):
     time_of_attempt = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 
-class Game(db.Model):
+class Game(db.Model):  # type: ignore
     """A single game of SKATE against your past self."""
     
     id = db.Column(db.Integer, primary_key=True)
@@ -82,7 +82,7 @@ class Game(db.Model):
     start_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
-                   game_id: Optional[bool]) -> None:
+                   game_id: Optional[int]) -> None:
     """Record an attempt by user (or fake attempt as part of a game)
 
     Args:
@@ -123,7 +123,7 @@ def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int
 
         # Opponent to choose a trick - if on a challenge, must be same
         trick_to_try = game_state.challenging_move_id
-        if game_state.challenging_move_id is None:
+        if trick_to_try is None:
             # If not on a challenge, logic is do user's best trick next
             trick_to_try = game_logic.game_trick_choice(app, user,
                     game_state.trick_ids_used_up, db)
@@ -248,8 +248,9 @@ def get_game_state(attempts: List[Attempt], user_name: str) -> game_logic.GameSt
 
     # Build up state and return it... note if no attempts yet that's ok
     game_state = game_logic.GameState(user_name)
-    for i, attempt in enumerate(sorted_attempts):
-        if game_state.apply_attempt(attempt):
+    for attempt in sorted_attempts:
+        if game_state.apply_attempt(attempt.trick_id, attempt.trick.name,
+                attempt.landed, attempt.user):
             break
 
     return game_state

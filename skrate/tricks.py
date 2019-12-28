@@ -3,7 +3,7 @@ from itertools import chain
 from typing import List, Optional, Tuple
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy  # type: ignore
 
 from skrate import models
 

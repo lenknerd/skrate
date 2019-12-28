@@ -4,7 +4,7 @@ import logging
 from json import JSONEncoder
 
 from flask import Flask, session, render_template
-from flask_session import Session
+from flask_session import Session  # type: ignore
 
 from skrate import models
 from skrate import tricks
@@ -114,7 +114,7 @@ def index(user: str) -> str:
     return render_template("index.html", user=user, tricks=all_tricks, **game_view_params)
 
 
-@app.route("/attempt/<trick_id>/<landed>/<past>")
+@app.route("/attempt/<trick_id>/<landed>/<past>")  # type: ignore
 def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
     """Mark that you just landed or missed a trick called <trick>.
 
@@ -144,10 +144,10 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
             session["prev_game_id"] = session["game_id"]
             session["game_id"] = None
 
-    return SkrateActionResponse("attempt", redraw_game, [trick_id], False).obj()
+    return SkrateActionResponse("attempt", redraw_game, [int(trick_id)], False).obj()
 
 
-@app.route("/start_game")
+@app.route("/start_game")  # type: ignore
 def start_game() -> _SkrateActionResponse:
     """Start a game under the current user."""
 

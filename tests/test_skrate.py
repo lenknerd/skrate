@@ -130,7 +130,7 @@ class TestSkrate:
         rv_data = rv.get_json()
         assert rv_data["update_game"] == False  # because we're not in a game
         assert rv_data["update_all_tricks"] == False
-        assert rv_data["update_tricks"] == [str(test_trick_id)]
+        assert rv_data["update_tricks"] == [test_trick_id]
 
         rv = client.get("/get_single_trick_stats/%s" % test_trick_id)
         assert rv.status_code == 200
@@ -167,7 +167,7 @@ class TestSkrate:
         rv_data = rv.get_json()
         assert rv_data["update_game"] == False  # because we're not in a game
         assert rv_data["update_all_tricks"] == False
-        assert rv_data["update_tricks"] == [str(test_trick_id)]
+        assert rv_data["update_tricks"] == [test_trick_id]
 
         rv = client.get("/get_single_trick_stats/%s" % test_trick_id)
         assert rv.status_code == 200
