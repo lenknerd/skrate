@@ -33,7 +33,7 @@ You can run tests via
 
 If you are running the server for the first time, also create necessary tables by running
 
-	./run_skrate.py database-setup
+	./run_skrate database-setup
 
 This not only creates the model tables but also populates the `trick` table with some common
 skateboarding tricks. New ones may be added, see "Adding New Tricks" below.
@@ -48,7 +48,7 @@ You can also run this at any time later to manually explore data.
 
 To actually start the service on your LAN, run
 
-	./run_skrate.py serve -h 0.0.0.0
+	./run_skrate serve -h 0.0.0.0
 
 This will start the server on your local network. It is not a background task, so may want to use
 for example [screen](https://linuxize.com/post/how-to-use-linux-screen/) and detach after run. To only
@@ -57,11 +57,11 @@ start service between docker and your local machine, leave off the 0.0.0.0.
 Verbose output may be seen by adding the `--debug` argument after `skrate.py` for any command. Log 
 messages go to stdout and `/tmp/skrate_service.log`. For more help you can run
 
-	./run_skrate.py --help
+	./run_skrate --help
 
 for a list of general command, and for help on a specific command,
 
-	./run_skrate.py [COMMAND] --help
+	./run_skrate [COMMAND] --help
 
 ### Skating
 
@@ -102,7 +102,7 @@ but we don't want to have both "Ollie" and "Nollie Ollie".
 
 After adding to `tricks.py`, you can simply rerun
 
-	./skrate.py database-setup
+	./run_skrate database-setup
 
 in order to load the changes. It will respect existing data and only add the new tricks.
 
