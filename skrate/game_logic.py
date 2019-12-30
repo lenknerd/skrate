@@ -69,7 +69,7 @@ class GameState:
 
         # Messages updating on instructions and what happened
         self.status_feed: List[GameFeedMessage] = []
-        self._say("Starting game! %s up first." % user_name, "primary")
+        self._say(f"Starting game! {user_name} up first.", "primary")
 
     def _say(self, message: str, msg_type: str="") -> None:
         """Add a message to the start of the status feed (so can show top-N).
@@ -80,7 +80,7 @@ class GameState:
 
         """
         self.status_feed.append(
-                GameFeedMessage("[Turn %s]: %s" % (self.turn_idx, message), msg_type))
+                GameFeedMessage(f"[Turn {self.turn_idx}]: {message}", msg_type))
 
     def apply_attempt(self, trick_id: int, trick_name: str, landed: bool, user: str) -> bool:
         """Update the game state given an attempt that just happened.
@@ -114,7 +114,7 @@ class GameState:
 
             if landed:
                 next_instruc = "" if user_attempt else "Try something else!"
-                self._say("%s matched the challenge. %s" % (attempter, next_instruc), "success")
+                self._say(f"{attempter} matched the challenge. {next_instruc}", "success")
                 self.turn_idx += 1
                 return False
 
@@ -125,21 +125,20 @@ class GameState:
             else:
                 letter_idx = self.opponent_score
                 self.opponent_score += 1
-            self._say("Missed challenge! %s gains a %s" % (attempter, LETTERS[letter_idx]), "danger")
+            self._say(f"Missed challenge! {attempter} gains a {LETTERS[letter_idx]}", "danger")
 
             # Lastly see if the miss results in game end
             if max(self.user_score, self.opponent_score) >= len(LETTERS):
-                self._say("%s wins!" % opponent, "primary")
+                self._say(f"{opponent} wins!", "primary")
                 return True  # Game over
 
         elif landed:
             # This was not a challenge response, it initiates a challenge
-            self._say("%s landed a %s! Can %s match it?" %
-                     (attempter, trick_name, opponent), "warning")
+            self._say(f"{attempter} landed a {trick_name}! Can {opponent} match it?", "warning")
             self.challenging_move_id = trick_id
         else:
             # This was not a challenge, and was a miss, nothing to do but report
-            self._say("%s missed a %s, back to %s" % (attempter, trick_name, opponent))
+            self._say("{attempter} missed a {trick_name}, back to {opponent}")
 
         self.turn_idx += 1
         return False  # Game not over yet

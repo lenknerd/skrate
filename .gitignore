@@ -1,4 +1,7 @@
 __pycache__/
-flask_session/
-env/
 .mypy_cache/
+build/
+dist/
+env/
+flask_session/
+skrate.egg-info/

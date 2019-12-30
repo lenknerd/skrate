@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
 """Command-line interface to Skrate app."""
+import subprocess
 from typing import Optional
 
 import click
 
 from skrate import server
+
+
+# Where to pull persistence layer docker image from
+_PERSISTENCE_REPO_TAG = "wagnerd/skrate-persistence:latest"
+
+# Start a container with this name for postgres service
+_CONTAINER_NAME="skrate-persistence"
+
+# Where in the container the postgres data volume should be mounted
+_DATA_LOC_IN_CONTAINER="/var/lib/postgresql/data/mounted_data_dir"
 
 
 @click.group()
@@ -27,6 +38,35 @@ def serve(port: int, host: Optional[str]) -> None:
     """Run the main server application."""
     server.app.logger.info("Running skrate web server.")
     server.app.run(port=port, host=host)
+
+
+@run_skrate.command()
+@click.option("-v", "--volume", help="Docker volume for skrate data", default="skrate-vol")
+def database_run(volume: str) -> None:
+    """Run the local skrate database service."""
+    # Pull the latest image if we don't already have this.
+    server.app.logger.info("Pulling docker image for skrate database...")
+    rcode = subprocess.call(["docker", "pull", _PERSISTENCE_REPO_TAG])
+    if rcode:
+        raise RuntimeError(f"Could not pull docker image, error {rcode}.")
+
+    # Create the volume (if already present this won't affect existing data)
+    server.app.logger.info(f"Creating database data volume with name {volume}.")
+    rcode = subprocess.call(["docker", "volume", "create", volume])
+    if rcode:
+        raise RuntimeError(f"Could not create docker data volume, error {rcode}.")
+
+    # Starts the container (detached) which will serve postgres using that data dir
+    server.app.logger.info("Starting skrate database service...")
+    run_args = ["docker", "run", "--network", "bridge", "-p", "5432:5432",
+                "-e", "POSTGRES_PASSWORD=postgres_password",
+                "-e", f"PGDATA={_DATA_LOC_IN_CONTAINER}",
+                "--mount", f"source={volume},target={_DATA_LOC_IN_CONTAINER}",
+                "--name", _CONTAINER_NAME, "-d", _PERSISTENCE_REPO_TAG]
+    rcode = subprocess.call(run_args)
+    if rcode:
+        raise RuntimeError(f"Could not start docker container, error {rcode}.")
+    server.app.logger.info("Started skrate database service.")
 
 
 if __name__ == '__main__': 

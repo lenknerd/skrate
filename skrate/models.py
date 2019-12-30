@@ -97,7 +97,7 @@ def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
         att = Attempt(trick_id=trick_id, game_id=game_id, user=user, landed=landed)
         db.session.add(att)
         db.session.commit()
-        app.logger.info("Committed new attempt with id %s" % att.id)
+        app.logger.info("Committed new attempt with id %s", att.id)
 
 
 def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int]) -> bool:
@@ -151,7 +151,7 @@ def start_game(app: Flask, user: str) -> int:
         game = Game(attempts=[], user=user)
         db.session.add(game)
         db.session.commit()
-        app.logger.info("Started new game with id %s" % game.id)
+        app.logger.info("Started new game with id %s", game.id)
 
     return game.id
 
