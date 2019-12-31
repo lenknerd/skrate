@@ -118,7 +118,7 @@ and noting the `Mountpoint` entry. You can then explore this directory (root per
 since docker owns this location). The volume name `skrate-vol` is default, any volume name may
 be used by setting non-default `--volume` argument to `run_skrate database-run`.
 
-### Thanks
+## Acknowledgements
 
 Skrate relies on [Flask](https://www.palletsprojects.com/p/flask/) for web service,
 [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/2.x/) for model management,

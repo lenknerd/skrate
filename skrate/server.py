@@ -4,7 +4,7 @@ import logging
 from json import JSONEncoder
 
 from flask import Flask, session, render_template
-from flask_session import Session  # type: ignore
+from flask_session import Session
 
 from skrate import models
 from skrate import tricks
@@ -124,7 +124,7 @@ def attempt(trick_id: str, landed: str, past: str) -> _SkrateActionResponse:
         past: whether is a "fake" attempt by past self in game ('true'/'false')
 
     """
-    landed_bool = landed == "true"  # would be nice if Flask checked type hints?
+    landed_bool = landed == "true"
     trick_id_int = int(trick_id)
     user = "past_" + session["user"] if past == "true" else session["user"]
     game_id_if_any = session.get("game_id", None)

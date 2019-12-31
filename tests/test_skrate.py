@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import random
-from typing import Any
+from typing import Any, Generator, List
 
 import pytest
 from flask.ctx import AppContext
@@ -19,7 +19,7 @@ _TEST_DB_URI = "postgresql://skrate_test_user:skrate_test_password@localhost:543
 
 
 @pytest.fixture
-def client(monkeypatch: Any) -> FlaskClient:
+def client(monkeypatch: Any) -> Generator[FlaskClient, None, None]:
     """Client test fixture for flask app testing - fake client, test database.
     
     Args:
@@ -48,7 +48,7 @@ def client(monkeypatch: Any) -> FlaskClient:
 
 
 @pytest.fixture
-def fix_rand_uniform_sequence(monkeypatch: Any) -> float:
+def fix_rand_uniform_sequence(monkeypatch: Any) -> List[float]:
     """Instead of random.uniform returning between vals, always return above const
 
     Args:

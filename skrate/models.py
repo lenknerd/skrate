@@ -4,7 +4,7 @@ import random
 from typing import Any, List, Mapping, Optional
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy  # type: ignore
+from flask_sqlalchemy import SQLAlchemy
 # from sqlalchemy import text
 
 from skrate import game_logic

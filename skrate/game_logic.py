@@ -7,7 +7,7 @@ import os
 from typing import Dict, List, Optional
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy  # type: ignore
+from flask_sqlalchemy import SQLAlchemy
 
 
 # Letters to get in a game of SKATE
