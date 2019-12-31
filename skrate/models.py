@@ -12,7 +12,6 @@ from skrate import game_logic
 # Our app database
 db = SQLAlchemy()
 
-
 # Game feed parameters
 _GAME_FEED_LENGTH = 4
 
@@ -75,11 +74,12 @@ class Attempt(db.Model):  # type: ignore
 
 class Game(db.Model):  # type: ignore
     """A single game of SKATE against your past self."""
-    
+
     id = db.Column(db.Integer, primary_key=True)
     attempts = db.relationship("Attempt", backref="game", lazy=True)
     user = db.Column(db.String(16), nullable=False)
     start_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
 
 def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
                    game_id: Optional[int]) -> None:
@@ -94,13 +94,17 @@ def record_attempt(app: Flask, user: str, trick_id: int, landed: bool,
 
     """
     with app.app_context():
-        att = Attempt(trick_id=trick_id, game_id=game_id, user=user, landed=landed)
+        att = Attempt(trick_id=trick_id,
+                      game_id=game_id,
+                      user=user,
+                      landed=landed)
         db.session.add(att)
         db.session.commit()
         app.logger.info("Committed new attempt with id %s", att.id)
 
 
-def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int]) -> bool:
+def opponent_response_if_any(app: Flask, user: str,
+                             game_id_if_any: Optional[int]) -> bool:
     """If in an ongoing game (not completed), past self needs to respond.
 
     Args:
@@ -125,8 +129,8 @@ def opponent_response_if_any(app: Flask, user: str, game_id_if_any: Optional[int
         trick_to_try = game_state.challenging_move_id
         if trick_to_try is None:
             # If not on a challenge, logic is do user's best trick next
-            trick_to_try = game_logic.game_trick_choice(app, user,
-                    game_state.trick_ids_used_up, db)
+            trick_to_try = game_logic.game_trick_choice(
+                app, user, game_state.trick_ids_used_up, db)
 
         # Figure whether opponent lands
         odds = game_logic.get_odds(app, user, trick_to_try, db)
@@ -165,9 +169,11 @@ def get_trick_view_params(user: str, trick: Trick) -> Mapping[str, Any]:
 
     """
 
-    user_attempts = Attempt.query.filter_by(user=user, trick_id=trick.id).count()
+    user_attempts = Attempt.query.filter_by(user=user,
+                                            trick_id=trick.id).count()
     user_lands = Attempt.query.filter_by(user=user,
-            trick_id=trick.id, landed=True).count()
+                                         trick_id=trick.id,
+                                         landed=True).count()
     return {
         "attempts": user_attempts,
         "lands": user_lands,
@@ -199,11 +205,14 @@ def get_skate_letters_colors(score: int) -> List[Mapping[str, str]]:
         score: integer from 0-5 indicating how many letters earned.
 
     """
-    return [{"color": "black" if i < score else "white", "letter": letter}
-             for i, letter in enumerate(game_logic.LETTERS)]
+    return [{
+        "color": "black" if i < score else "white",
+        "letter": letter
+    } for i, letter in enumerate(game_logic.LETTERS)]
 
 
-def get_latest_game_params(app: Flask, user: str, game_id: int) -> Mapping[str, Any]:
+def get_latest_game_params(app: Flask, user: str,
+                           game_id: int) -> Mapping[str, Any]:
     """Get parameters to render the game view.
 
     Args:
@@ -216,22 +225,31 @@ def get_latest_game_params(app: Flask, user: str, game_id: int) -> Mapping[str, 
         latest_game = Game.query.filter(Game.user == user, Game.id == game_id) \
                 .order_by(Game.start_time).first()
         if latest_game is None:
-            turn_lines = [{"classes": "list-group-item",
-                           "text": "Hit 'New Game' to play!"}]
-            letters_colors = {"new": get_skate_letters_colors(0),
-                              "past": get_skate_letters_colors(0)}
+            turn_lines = [{
+                "classes": "list-group-item",
+                "text": "Hit 'New Game' to play!"
+            }]
+            letters_colors = {
+                "new": get_skate_letters_colors(0),
+                "past": get_skate_letters_colors(0)
+            }
         else:
             # This utilizes the actual game rules to generate output so far
             game_state = get_game_state(latest_game.attempts, user)
-            turn_lines = [{"classes": "list-group-item " + msg.msg_type, "text": msg.msg_text}
-                          for msg in game_state.status_feed]
-            letters_colors = {"new": get_skate_letters_colors(game_state.user_score),
-                              "past": get_skate_letters_colors(game_state.opponent_score)}
+            turn_lines = [{
+                "classes": "list-group-item " + msg.msg_type,
+                "text": msg.msg_text
+            } for msg in game_state.status_feed]
+            letters_colors = {
+                "new": get_skate_letters_colors(game_state.user_score),
+                "past": get_skate_letters_colors(game_state.opponent_score)
+            }
 
         return {"turn_lines": turn_lines, "letters_colors": letters_colors}
 
 
-def get_game_state(attempts: List[Attempt], user_name: str) -> game_logic.GameState:
+def get_game_state(attempts: List[Attempt],
+                   user_name: str) -> game_logic.GameState:
     """Calculate the game state given ordered list of attempts.
 
     Args:
@@ -243,14 +261,16 @@ def get_game_state(attempts: List[Attempt], user_name: str) -> game_logic.GameSt
     sorted_attempts = sorted(attempts, key=lambda a: a.time_of_attempt)
 
     # Sanity check, confirm alternating turns starting with user
-    assert all(a.user == user_name for a in sorted_attempts[::2]), game_logic._TURN_FAULT
-    assert all(a.user != user_name for a in sorted_attempts[1::2]), game_logic._TURN_FAULT
+    assert all(a.user == user_name
+               for a in sorted_attempts[::2]), game_logic._TURN_FAULT
+    assert all(a.user != user_name
+               for a in sorted_attempts[1::2]), game_logic._TURN_FAULT
 
     # Build up state and return it... note if no attempts yet that's ok
     game_state = game_logic.GameState(user_name)
     for attempt in sorted_attempts:
         if game_state.apply_attempt(attempt.trick_id, attempt.trick.name,
-                attempt.landed, attempt.user):
+                                    attempt.landed, attempt.user):
             break
 
     return game_state

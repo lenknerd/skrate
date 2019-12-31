@@ -7,43 +7,42 @@ from flask_sqlalchemy import SQLAlchemy
 
 from skrate import models
 
-
 # Trick name and whether should also include a switch, nollie, and/or fakie version.
-# Only common stuff and only limited to BATB-legal - note rules here 
+# Only common stuff and only limited to BATB-legal - note rules here
 # https://en.wikipedia.org/wiki/Game_of_Skate#Rules_in_Battle_at_the_Berrics
 
 _PREFIXES = ["Nollie ", "Switch ", "Fakie "]
 
 # name,                    nollie, switch, fakie
 _TRICKS = [
-    ("Kickflip",            True,  True,  True),
-    ("Ollie",               False, True,  True),
-    ("Nollie",              False, False, False),
-    ("BS 180",              True,  True,  True),
-    ("FS 180",              True,  True,  True),
-    ("FS Shove-It",         True,  True,  True),
-    ("BS Shove-It",         True,  True,  True),
-    ("Heelflip",            True,  True,  True),
-    ("FS 360 Shove-It",     True,  True,  True),
-    ("BS 360 Shove-It",     True,  True,  True),
-    ("FS Bigspin",          True,  True,  True),
-    ("BS Bigspin",          True,  True,  True),
-    ("Varial Flip",         True,  True,  True),
-    ("Varial Heelflip",     True,  True,  True),
-    ("360 Flip",            True,  True,  True),
-    ("Laserflip",           True,  True,  True),
-    ("BS 180 Kickflip",     True,  True,  True),
-    ("FS 180 Kickflip",     True,  True,  True),
-    ("BS 180 Heelflip",     True,  True,  True),
-    ("FS 180 Heelflip",     True,  True,  True),
-    ("Bigflip",             True,  True,  True),
-    ("Heelflip Bigspin",    True,  True,  True),
-    ("Hardflip",            True,  True,  True),
-    ("Inward Heelflip",     True,  True,  True),
-    ("BS 360",              True,  True,  True),
-    ("FS 360",              True,  True,  True),
-    ("Sex Change",          True,  True,  True),
-    ("Heelflip Sex Change", True,  True,  True),
+    ("Kickflip", True, True, True),
+    ("Ollie", False, True, True),
+    ("Nollie", False, False, False),
+    ("BS 180", True, True, True),
+    ("FS 180", True, True, True),
+    ("FS Shove-It", True, True, True),
+    ("BS Shove-It", True, True, True),
+    ("Heelflip", True, True, True),
+    ("FS 360 Shove-It", True, True, True),
+    ("BS 360 Shove-It", True, True, True),
+    ("FS Bigspin", True, True, True),
+    ("BS Bigspin", True, True, True),
+    ("Varial Flip", True, True, True),
+    ("Varial Heelflip", True, True, True),
+    ("360 Flip", True, True, True),
+    ("Laserflip", True, True, True),
+    ("BS 180 Kickflip", True, True, True),
+    ("FS 180 Kickflip", True, True, True),
+    ("BS 180 Heelflip", True, True, True),
+    ("FS 180 Heelflip", True, True, True),
+    ("Bigflip", True, True, True),
+    ("Heelflip Bigspin", True, True, True),
+    ("Hardflip", True, True, True),
+    ("Inward Heelflip", True, True, True),
+    ("BS 360", True, True, True),
+    ("FS 360", True, True, True),
+    ("Sex Change", True, True, True),
+    ("Heelflip Sex Change", True, True, True),
 ]
 
 
@@ -58,16 +57,19 @@ def trick_variants(trick_tuple: Tuple[str, bool, bool, bool]) -> List[str]:
 
     """
     base = trick_tuple[0]
-    prefixes = [prefix for prefix, use in zip(_PREFIXES, trick_tuple[1:]) if use]
+    prefixes = [
+        prefix for prefix, use in zip(_PREFIXES, trick_tuple[1:]) if use
+    ]
     return [base, *[prefix + base for prefix in prefixes]]
 
 
 def all_tricks_variants() -> List[str]:
     """Get names for all trick variants defined in _TRICKS above."""
 
-    return list(chain.from_iterable([
-        name for name in trick_variants(trick_tuple)
-    ] for trick_tuple in _TRICKS))
+    return list(
+        chain.from_iterable([name
+                             for name in trick_variants(trick_tuple)]
+                            for trick_tuple in _TRICKS))
 
 
 def update_tricks_table(app: Flask) -> None:
@@ -85,4 +87,3 @@ def update_tricks_table(app: Flask) -> None:
                 new_trick = models.Trick(name=trick_name)
                 models.db.session.add(new_trick)
                 models.db.session.commit()  # auto-assigns ID on commit
-

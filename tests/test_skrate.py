@@ -195,7 +195,8 @@ class TestSkrate:
         test_tricks = []  # List[models.Trick]
         with server.app.app_context() as server_context:
             # Just some trick id's to use
-            test_tricks = models.Trick.query.limit(n_wins_first + n_drops_next + 1)
+            test_tricks = models.Trick.query.limit(n_wins_first + n_drops_next +
+                                                   1)
 
             # Declare game object
             game = models.Game(attempts=[], user=test_user)
@@ -206,8 +207,10 @@ class TestSkrate:
             for trick in test_tricks[0:n_wins_first]:
                 # Note these call model functions not client turns, because client attempt
                 # would also automatically choose oppoenent response, we want to test that
-                _game_turn(trick.id, True, test_user, game.id, client, server_context)
-                _game_turn(trick.id, False, "past_" + test_user, game.id, client, server_context)
+                _game_turn(trick.id, True, test_user, game.id, client,
+                           server_context)
+                _game_turn(trick.id, False, "past_" + test_user, game.id,
+                           client, server_context)
 
             models.db.session.add(game)
             models.db.session.commit()  # re-sync attempts
@@ -216,12 +219,16 @@ class TestSkrate:
             assert game_state.opponent_score == n_wins_first
 
             # Now if both miss one, expect no score change. Use last trick ID
-            _game_turn(test_tricks[-1].id, False, test_user, game.id, client, server_context)
-            _game_turn(test_tricks[-1].id, False, "past_" + test_user, game.id, client, server_context)
+            _game_turn(test_tricks[-1].id, False, test_user, game.id, client,
+                       server_context)
+            _game_turn(test_tricks[-1].id, False, "past_" + test_user, game.id,
+                       client, server_context)
 
             # Now if both land one, expect no score change. Use last trick ID
-            _game_turn(test_tricks[-1].id, True, test_user, game.id, client, server_context)
-            _game_turn(test_tricks[-1].id, True, "past_" + test_user, game.id, client, server_context)
+            _game_turn(test_tricks[-1].id, True, test_user, game.id, client,
+                       server_context)
+            _game_turn(test_tricks[-1].id, True, "past_" + test_user, game.id,
+                       client, server_context)
 
             models.db.session.add(game)
             models.db.session.commit()  # re-sync attempts
@@ -230,21 +237,26 @@ class TestSkrate:
             assert game_state.opponent_score == n_wins_first
 
             # A one-off repeat should count as fail, turn over priority to opponent
-            _game_turn(test_tricks[0].id, False, test_user, game.id, client, server_context)
+            _game_turn(test_tricks[0].id, False, test_user, game.id, client,
+                       server_context)
 
             # Now opponent lands the next n_drops_next (5, enough to win)
             for trick in test_tricks[n_wins_first:n_wins_first + n_drops_next]:
-                _game_turn(trick.id, True, "past_" + test_user, game.id, client, server_context)
-                _game_turn(trick.id, False, test_user, game.id, client, server_context)
+                _game_turn(trick.id, True, "past_" + test_user, game.id, client,
+                           server_context)
+                _game_turn(trick.id, False, test_user, game.id, client,
+                           server_context)
 
             models.db.session.add(game)
             models.db.session.commit()  # re-sync attempts
             game_state = models.get_game_state(game.attempts, test_user)
             assert game_state.user_score == n_drops_next
             assert game_state.opponent_score == n_wins_first
-            assert game_state.status_feed[-1].msg_text == "[Turn 20]: Past you wins!"
+            assert game_state.status_feed[
+                -1].msg_text == "[Turn 20]: Past you wins!"
 
-    def test_trick_choice(self, client: FlaskClient, fix_rand_uniform_sequence: Any) -> None:
+    def test_trick_choice(self, client: FlaskClient,
+                          fix_rand_uniform_sequence: Any) -> None:
         """Test function to choose most likely trick for user.
         
         Args:
@@ -268,10 +280,12 @@ class TestSkrate:
             rv = client.get("/attempt/%s/true/false" % test_trick_id)
 
         # Check that it's now most likely trick, no tricks prohibited
-        best_trick = game_logic.game_trick_choice(server.app, test_user, [], models.db)
+        best_trick = game_logic.game_trick_choice(server.app, test_user, [],
+                                                  models.db)
         assert best_trick == test_trick_id
 
-    def test_client_game(self, client: FlaskClient, fix_rand_uniform_sequence: Any) -> None:
+    def test_client_game(self, client: FlaskClient,
+                         fix_rand_uniform_sequence: Any) -> None:
         """Test game progress from end-to-end client standpoint.
 
         Args:
@@ -335,4 +349,3 @@ class TestSkrate:
         assert rv.status_code == 200
         html_str = str(rv.data)
         assert "Missed challenge! Past you " in html_str
-

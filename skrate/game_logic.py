@@ -9,7 +9,6 @@ from typing import Dict, List, Optional
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-
 # Letters to get in a game of SKATE
 LETTERS = ("S", "K", "A", "T", "E")
 
@@ -29,7 +28,7 @@ _TRICK_RANDOM_SKIP = 0.5
 class GameFeedMessage:
     """A game feed message."""
 
-    def __init__(self, msg_text: str, msg_type: str="") -> None:
+    def __init__(self, msg_text: str, msg_type: str = "") -> None:
         """Initialze a game feed message.
         
         Args:
@@ -71,7 +70,7 @@ class GameState:
         self.status_feed: List[GameFeedMessage] = []
         self._say(f"Starting game! {user_name} up first.", "primary")
 
-    def _say(self, message: str, msg_type: str="") -> None:
+    def _say(self, message: str, msg_type: str = "") -> None:
         """Add a message to the start of the status feed (so can show top-N).
         
         Args:
@@ -80,9 +79,10 @@ class GameState:
 
         """
         self.status_feed.append(
-                GameFeedMessage(f"[Turn {self.turn_idx}]: {message}", msg_type))
+            GameFeedMessage(f"[Turn {self.turn_idx}]: {message}", msg_type))
 
-    def apply_attempt(self, trick_id: int, trick_name: str, landed: bool, user: str) -> bool:
+    def apply_attempt(self, trick_id: int, trick_name: str, landed: bool,
+                      user: str) -> bool:
         """Update the game state given an attempt that just happened.
         
         Args:
@@ -99,13 +99,15 @@ class GameState:
         attempter, opponent = _YOU_NAMES if user_attempt else _YOU_NAMES[::-1]
 
         if trick_id in self.trick_ids_used_up:
-            self._say("Trick already used! Treating as miss for game purposes.", "dark")
+            self._say("Trick already used! Treating as miss for game purposes.",
+                      "dark")
             landed = False
 
         if self.challenging_move_id is not None:
             # Check player tried the right trick, and mark it as used up
             if trick_id != self.challenging_move_id:
-                self._say("Wrong trick, treating as a miss for game purposes.", "dark")
+                self._say("Wrong trick, treating as a miss for game purposes.",
+                          "dark")
                 landed = False
             self.trick_ids_used_up.append(trick_id)
 
@@ -114,7 +116,8 @@ class GameState:
 
             if landed:
                 next_instruc = "" if user_attempt else "Try something else!"
-                self._say(f"{attempter} matched the challenge. {next_instruc}", "success")
+                self._say(f"{attempter} matched the challenge. {next_instruc}",
+                          "success")
                 self.turn_idx += 1
                 return False
 
@@ -125,7 +128,9 @@ class GameState:
             else:
                 letter_idx = self.opponent_score
                 self.opponent_score += 1
-            self._say(f"Missed challenge! {attempter} gains a {LETTERS[letter_idx]}", "danger")
+            self._say(
+                f"Missed challenge! {attempter} gains a {LETTERS[letter_idx]}",
+                "danger")
 
             # Lastly see if the miss results in game end
             if max(self.user_score, self.opponent_score) >= len(LETTERS):
@@ -134,7 +139,9 @@ class GameState:
 
         elif landed:
             # This was not a challenge response, it initiates a challenge
-            self._say(f"{attempter} landed a {trick_name}! Can {opponent} match it?", "warning")
+            self._say(
+                f"{attempter} landed a {trick_name}! Can {opponent} match it?",
+                "warning")
             self.challenging_move_id = trick_id
         else:
             # This was not a challenge, and was a miss, nothing to do but report
@@ -145,7 +152,8 @@ class GameState:
 
     def is_ongoing(self) -> bool:
         """Whether the game is complete/won by someone."""
-        return self.user_score < len(LETTERS) and self.opponent_score < len(LETTERS)
+        return self.user_score < len(LETTERS) and self.opponent_score < len(
+            LETTERS)
 
 
 def _read_sql_resource(query_name: str) -> str:
@@ -155,11 +163,13 @@ def _read_sql_resource(query_name: str) -> str:
         query_name: file name minus .sql extension, expected in same dir as this module
 
     """
-    with open(os.path.join(os.path.dirname(__file__), query_name + ".sql")) as qfile:
+    with open(os.path.join(os.path.dirname(__file__),
+                           query_name + ".sql")) as qfile:
         return qfile.read()
 
 
-def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: SQLAlchemy) -> int:
+def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int],
+                      db: SQLAlchemy) -> int:
     """Find the trick the user is most likely to land.
 
     Args:
@@ -171,17 +181,23 @@ def game_trick_choice(app: Flask, user: str, tricks_prohibited: List[int], db: S
     """
     with app.app_context():
         statement = _read_sql_resource("rates_by_trick")
-        result = db.session.execute(statement, {"username": user,
-                                                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
-                                                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
+        result = db.session.execute(
+            statement, {
+                "username": user,
+                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
+                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST
+            })
         for row in result:
-            if row[0] not in tricks_prohibited and random.uniform(0, 1) > _TRICK_RANDOM_SKIP:
+            if row[0] not in tricks_prohibited and random.uniform(
+                    0, 1) > _TRICK_RANDOM_SKIP:
                 return row[0]
 
-    raise RuntimeError("All tricks used up! Crazy outcome expected to never happen!")
+    raise RuntimeError(
+        "All tricks used up! Crazy outcome expected to never happen!")
 
 
-def get_odds_lookup_dict(app: Flask, user: str, db: SQLAlchemy) -> Dict[int, float]:
+def get_odds_lookup_dict(app: Flask, user: str,
+                         db: SQLAlchemy) -> Dict[int, float]:
     """Get dict to look up odds of landing trick by trick id.
 
     Args:
@@ -192,9 +208,12 @@ def get_odds_lookup_dict(app: Flask, user: str, db: SQLAlchemy) -> Dict[int, flo
     """
     with app.app_context():
         statement = _read_sql_resource("rates_by_trick")
-        result = db.session.execute(statement, {"username": user,
-                                                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
-                                                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
+        result = db.session.execute(
+            statement, {
+                "username": user,
+                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
+                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST
+            })
         return {row[0]: row[1] for row in result}
 
 
@@ -211,12 +230,15 @@ def get_odds(app: Flask, user: str, trick_id: int, db: SQLAlchemy) -> float:
     with app.app_context():
         # Would be more efficient to use different query only on one trick, but trivial scale for now
         statement = _read_sql_resource("rates_by_trick")
-        result = db.session.execute(statement, {"username": user,
-                                                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
-                                                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST})
+        result = db.session.execute(
+            statement, {
+                "username": user,
+                "nlimit": _RECENT_ATTEMPTS_WINDOW_OLDEST,
+                "nmin": _RECENT_ATTEMPTS_WINDOW_NEWEST
+            })
         for row in result:
             if row[0] == trick_id:
                 return row[1]
 
-    raise ValueError("Requested odds for non-existent trick id " + str(trick_id))
-
+    raise ValueError("Requested odds for non-existent trick id " +
+                     str(trick_id))

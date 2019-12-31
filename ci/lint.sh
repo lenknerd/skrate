@@ -16,6 +16,8 @@ mypy run_skrate  # Includes all other modules
 
 
 # Yapf python formatting checks
-yapf -i tests/test_skrate
+yapf -i tests/test_skrate.py
 yapf -i run_skrate
 yapf -i skrate/*.py
+
+echo "Linting complete."
