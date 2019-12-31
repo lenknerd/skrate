@@ -12,9 +12,6 @@ cd ${BASEDIR}
 mypy tests/test_skrate.py
 mypy run_skrate  # Includes all other modules
 
-# Check documentation strings in python
-
-
 # Yapf python formatting checks
 yapf -i tests/test_skrate.py
 yapf -i run_skrate
