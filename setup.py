@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="skrate",
-    version="0.1",
+    version="0.2",
     author="David Lenkner",
     description="App for skateboarding progression analysis",
     license="MIT",
@@ -28,4 +28,6 @@ setuptools.setup(
         "pytest>=5.3.2",
         "SQLAlchemy>=1.3.12",
     ],
+    package_data={"skrate": ["static/*", "templates/*", "rates_by_trick.sql"]},
+    include_package_data=True,
 )
