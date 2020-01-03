@@ -39,8 +39,7 @@ Finally to start the Skrate web service,
 The `-h` option will start the server on your local network as opposed to your machine only.
 Default flask port is 5000.
 
-Verbose output may be seen by adding the `--debug` argument after `skrate.py` for any command. Log 
-messages go to stdout and `/tmp/skrate_service.log`. For further help see
+Log messages go to stdout and `/tmp/skrate_service.log`. For further help see
 
 	run_skrate --help
 
